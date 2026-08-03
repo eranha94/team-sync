@@ -4,16 +4,33 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+const ALLOWED_POSITIONS = [
+  "goalkeeper",
+  "center_back",
+  "full_back",
+  "defensive_midfielder",
+  "midfielder",
+  "winger",
+  "striker",
+] as const;
+
+type PlayerPosition =
+  (typeof ALLOWED_POSITIONS)[number];
+
 type RegisterBody = {
   fullName?: string;
   phone?: string;
   pin?: string;
+  positions?: string[];
 };
 
 function normalizePhone(value: string) {
   const digits = value.replace(/\D/g, "");
 
-  if (digits.startsWith("9725") && digits.length === 12) {
+  if (
+    digits.startsWith("9725") &&
+    digits.length === 12
+  ) {
     return `0${digits.slice(3)}`;
   }
 
@@ -22,17 +39,32 @@ function normalizePhone(value: string) {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as RegisterBody;
+    const body =
+      (await request.json()) as RegisterBody;
 
     const fullName = (body.fullName ?? "").trim();
     const phone = normalizePhone(body.phone ?? "");
     const pin = (body.pin ?? "").trim();
+
+    const positions = Array.isArray(body.positions)
+      ? [...new Set(body.positions)]
+      : [];
 
     if (fullName.length < 2) {
       return NextResponse.json(
         {
           success: false,
           message: "יש להזין שם מלא",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (fullName.length > 80) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "השם שהוזן ארוך מדי",
         },
         { status: 400 }
       );
@@ -48,11 +80,31 @@ export async function POST(request: Request) {
       );
     }
 
+    if (
+      positions.length === 0 ||
+      positions.some(
+        (position) =>
+          !ALLOWED_POSITIONS.includes(
+            position as PlayerPosition
+          )
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "יש לבחור לפחות עמדה חוקית אחת",
+        },
+        { status: 400 }
+      );
+    }
+
     if (!/^\d{4,6}$/.test(pin)) {
       return NextResponse.json(
         {
           success: false,
-          message: "הקוד חייב להכיל 4 עד 6 ספרות",
+          message:
+            "הקוד חייב להכיל 4 עד 6 ספרות",
         },
         { status: 400 }
       );
@@ -65,6 +117,10 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceKey) {
+      console.error(
+        "Missing Supabase server configuration"
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -81,27 +137,62 @@ export async function POST(request: Request) {
         auth: {
           persistSession: false,
           autoRefreshToken: false,
+          detectSessionInUrl: false,
         },
       }
     );
 
-    // האם כבר קיים משתמש
+    const {
+      data: existingMember,
+      error: existingMemberError,
+    } = await supabase
+      .from("members")
+      .select(
+        "id, is_active, approval_status"
+      )
+      .eq("phone", phone)
+      .maybeSingle();
 
-    const { data: existingMember } =
-      await supabase
-        .from("members")
-        .select("id,is_active")
-        .eq("phone", phone)
-        .maybeSingle();
+    if (existingMemberError) {
+      console.error(
+        "Existing member lookup error:",
+        existingMemberError
+      );
 
-    if (existingMember) {
       return NextResponse.json(
         {
           success: false,
           message:
-            existingMember.is_active
-              ? "מספר הטלפון כבר רשום במערכת"
-              : "כבר קיימת בקשת הרשמה למספר הזה",
+            "לא ניתן לבדוק את פרטי המשתמש כרגע",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (existingMember) {
+      let message =
+        "מספר הטלפון כבר רשום במערכת";
+
+      if (
+        existingMember.approval_status ===
+        "pending"
+      ) {
+        message =
+          "כבר קיימת בקשת הרשמה למספר הזה";
+      }
+
+      if (
+        existingMember.approval_status ===
+        "rejected"
+      ) {
+        message =
+          "בקשת הרשמה קודמת למספר הזה נדחתה";
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          message,
         },
         { status: 400 }
       );
@@ -113,18 +204,19 @@ export async function POST(request: Request) {
       .from("members")
       .insert({
         full_name: fullName,
-        phone: phone,
+        phone,
         pin_hash: pinHash,
-
+        positions,
         role: "player",
-
         is_active: false,
-
         approval_status: "pending",
       });
 
     if (error) {
-      console.error(error);
+      console.error(
+        "Register member insert error:",
+        error
+      );
 
       return NextResponse.json(
         {
@@ -141,7 +233,10 @@ export async function POST(request: Request) {
         "בקשת ההצטרפות נשלחה בהצלחה וממתינה לאישור מנהל הקבוצה.",
     });
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Register route error:",
+      error
+    );
 
     return NextResponse.json(
       {

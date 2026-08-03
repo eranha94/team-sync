@@ -68,6 +68,9 @@ export default function DashboardPage() {
               startDate={openPoll.start_date}
               endDate={openPoll.end_date}
               responseRate={responseRate}
+              isAdmin={member?.role === "admin"}
+              adminPhone={member?.phone}
+              onPollClosed={refresh}
             />
           </section>
 
