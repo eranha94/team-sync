@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
+import useLanguage from "@/hooks/useLanguage";
 import Loading from "@/components/ui/Loading";
 import PageTitle from "@/components/ui/PageTitle";
 import EmptyState from "@/components/ui/EmptyState";
@@ -30,7 +31,7 @@ type CalendarPollDay = {
   } | null;
 };
 
-const WEEK_DAYS = [
+const WEEK_DAYS_HE = [
   "ראשון",
   "שני",
   "שלישי",
@@ -38,6 +39,16 @@ const WEEK_DAYS = [
   "חמישי",
   "שישי",
   "שבת",
+];
+
+const WEEK_DAYS_EN = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
 ];
 
 function dateToKey(date: Date) {
@@ -52,8 +63,11 @@ function cleanTime(value: string | null) {
   return value ? value.slice(0, 5) : "";
 }
 
-function formatMonthTitle(date: Date) {
-  return new Intl.DateTimeFormat("he-IL", {
+function formatMonthTitle(
+  date: Date,
+  locale: "he-IL" | "en-US"
+) {
+  return new Intl.DateTimeFormat(locale, {
     month: "long",
     year: "numeric",
   }).format(date);
@@ -77,9 +91,8 @@ function getCalendarDays(currentMonth: Date) {
   const lastDay = new Date(year, month + 1, 0);
 
   const leadingDays = firstDay.getDay();
-  const totalCells = Math.ceil(
-    (leadingDays + lastDay.getDate()) / 7
-  ) * 7;
+  const totalCells =
+    Math.ceil((leadingDays + lastDay.getDate()) / 7) * 7;
 
   return Array.from({ length: totalCells }, (_, index) => {
     const dayNumber = index - leadingDays + 1;
@@ -93,25 +106,28 @@ function getCalendarDays(currentMonth: Date) {
   });
 }
 
-function getStatusStyles(status: PollStatus) {
+function getStatusStyles(
+  status: PollStatus,
+  isHebrew: boolean
+) {
   switch (status) {
     case "open":
       return {
-        label: "פתוח",
+        label: isHebrew ? "פתוח" : "Open",
         className:
           "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
       };
 
     case "closed":
       return {
-        label: "נסגר",
+        label: isHebrew ? "נסגר" : "Closed",
         className:
           "border-white/10 bg-white/[0.05] text-white/50",
       };
 
     default:
       return {
-        label: "טיוטה",
+        label: isHebrew ? "טיוטה" : "Draft",
         className:
           "border-amber-400/20 bg-amber-400/10 text-amber-300",
       };
@@ -119,6 +135,11 @@ function getStatusStyles(status: PollStatus) {
 }
 
 export default function CalendarPage() {
+  const { direction, isHebrew } = useLanguage();
+
+  const locale = isHebrew ? "he-IL" : "en-US";
+  const weekDays = isHebrew ? WEEK_DAYS_HE : WEEK_DAYS_EN;
+
   const [currentMonth, setCurrentMonth] = useState(
     () => new Date()
   );
@@ -165,21 +186,25 @@ export default function CalendarPage() {
           throw error;
         }
 
-        setPollDays((data ?? []) as unknown as CalendarPollDay[]);
+        setPollDays(
+          (data ?? []) as unknown as CalendarPollDay[]
+        );
       } catch (error) {
         console.error("Calendar error:", error);
 
         setMessage(
           error instanceof Error
             ? error.message
-            : "לא ניתן לטעון את לוח השנה"
+            : isHebrew
+              ? "לא ניתן לטעון את לוח השנה"
+              : "Unable to load the calendar"
         );
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
       }
     },
-    [currentMonth]
+    [currentMonth, isHebrew]
   );
 
   useEffect(() => {
@@ -208,36 +233,47 @@ export default function CalendarPage() {
 
   const todayKey = dateToKey(new Date());
 
-  const moveMonth = (direction: number) => {
+  function moveMonth(monthOffset: number) {
     setCurrentMonth(
       (previousMonth) =>
         new Date(
           previousMonth.getFullYear(),
-          previousMonth.getMonth() + direction,
+          previousMonth.getMonth() + monthOffset,
           1
         )
     );
-  };
+  }
 
-  const goToToday = () => {
+  function goToToday() {
     setCurrentMonth(new Date());
-  };
+  }
 
   if (isLoading) {
     return (
       <Loading
         fullScreen
         size="lg"
-        text="טוען את לוח השנה..."
+        text={
+          isHebrew
+            ? "טוען את לוח השנה..."
+            : "Loading calendar..."
+        }
       />
     );
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
+    <main
+      dir={direction}
+      className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10"
+    >
       <PageTitle
-        title="לוח שנה"
-        subtitle="כל הסקרים והסשנים במקום אחד"
+        title={isHebrew ? "לוח שנה" : "Calendar"}
+        subtitle={
+          isHebrew
+            ? "כל הסקרים והסשנים במקום אחד"
+            : "All polls and sessions in one place"
+        }
         icon={<CalendarDays size={24} />}
         action={
           <button
@@ -251,7 +287,13 @@ export default function CalendarPage() {
               className={isRefreshing ? "animate-spin" : ""}
             />
 
-            {isRefreshing ? "מרענן..." : "רענון"}
+            {isRefreshing
+              ? isHebrew
+                ? "מרענן..."
+                : "Refreshing..."
+              : isHebrew
+                ? "רענון"
+                : "Refresh"}
           </button>
         }
       />
@@ -269,11 +311,11 @@ export default function CalendarPage() {
         <div className="flex flex-col gap-4 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-bold text-purple-300">
-              תצוגה חודשית
+              {isHebrew ? "תצוגה חודשית" : "Monthly view"}
             </p>
 
             <h2 className="mt-1 text-2xl font-black capitalize">
-              {formatMonthTitle(currentMonth)}
+              {formatMonthTitle(currentMonth, locale)}
             </h2>
           </div>
 
@@ -281,10 +323,16 @@ export default function CalendarPage() {
             <button
               type="button"
               onClick={() => moveMonth(-1)}
-              aria-label="חודש קודם"
+              aria-label={
+                isHebrew ? "חודש קודם" : "Previous month"
+              }
               className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] transition hover:bg-white/[0.1]"
             >
-              <ChevronRight size={20} />
+              {direction === "rtl" ? (
+                <ChevronRight size={20} />
+              ) : (
+                <ChevronLeft size={20} />
+              )}
             </button>
 
             <button
@@ -292,22 +340,28 @@ export default function CalendarPage() {
               onClick={goToToday}
               className="h-11 rounded-2xl border border-purple-400/20 bg-purple-400/10 px-5 text-sm font-bold text-purple-200 transition hover:bg-purple-400/20"
             >
-              היום
+              {isHebrew ? "היום" : "Today"}
             </button>
 
             <button
               type="button"
               onClick={() => moveMonth(1)}
-              aria-label="חודש הבא"
+              aria-label={
+                isHebrew ? "חודש הבא" : "Next month"
+              }
               className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] transition hover:bg-white/[0.1]"
             >
-              <ChevronLeft size={20} />
+              {direction === "rtl" ? (
+                <ChevronLeft size={20} />
+              ) : (
+                <ChevronRight size={20} />
+              )}
             </button>
           </div>
         </div>
 
         <div className="hidden grid-cols-7 border-b border-white/10 sm:grid">
-          {WEEK_DAYS.map((day) => (
+          {weekDays.map((day) => (
             <div
               key={day}
               className="border-l border-white/5 px-3 py-4 text-center text-sm font-bold text-white/45 last:border-l-0"
@@ -345,7 +399,9 @@ export default function CalendarPage() {
 
                     {dayPolls.length > 0 && (
                       <span className="text-xs font-bold text-purple-300">
-                        {dayPolls.length} אירועים
+                        {isHebrew
+                          ? `${dayPolls.length} אירועים`
+                          : `${dayPolls.length} events`}
                       </span>
                     )}
                   </div>
@@ -353,7 +409,8 @@ export default function CalendarPage() {
                   <div className="mt-3 space-y-2">
                     {dayPolls.slice(0, 2).map((pollDay) => {
                       const status = getStatusStyles(
-                        pollDay.poll?.status ?? "draft"
+                        pollDay.poll?.status ?? "draft",
+                        isHebrew
                       );
 
                       return (
@@ -363,7 +420,8 @@ export default function CalendarPage() {
                           className="block rounded-xl border border-white/10 bg-white/[0.05] p-2.5 transition hover:border-purple-400/30 hover:bg-purple-400/10"
                         >
                           <p className="truncate text-xs font-bold text-white">
-                            {pollDay.poll?.title ?? "סקר"}
+                            {pollDay.poll?.title ??
+                              (isHebrew ? "סקר" : "Poll")}
                           </p>
 
                           <div className="mt-2 flex items-center justify-between gap-2">
@@ -385,7 +443,9 @@ export default function CalendarPage() {
 
                     {dayPolls.length > 2 && (
                       <p className="text-center text-xs font-bold text-purple-300">
-                        ועוד {dayPolls.length - 2}
+                        {isHebrew
+                          ? `ועוד ${dayPolls.length - 2}`
+                          : `And ${dayPolls.length - 2} more`}
                       </p>
                     )}
                   </div>
@@ -399,18 +459,27 @@ export default function CalendarPage() {
           {pollDays.length === 0 ? (
             <EmptyState
               icon={<CalendarDays size={30} />}
-              title="אין אירועים בחודש הזה"
-              description="לא נמצאו סקרים או סשנים בחודש הנבחר."
+              title={
+                isHebrew
+                  ? "אין אירועים בחודש הזה"
+                  : "No events this month"
+              }
+              description={
+                isHebrew
+                  ? "לא נמצאו סקרים או סשנים בחודש הנבחר."
+                  : "No polls or sessions were found in the selected month."
+              }
             />
           ) : (
             <div className="space-y-3">
               {pollDays.map((pollDay) => {
                 const status = getStatusStyles(
-                  pollDay.poll?.status ?? "draft"
+                  pollDay.poll?.status ?? "draft",
+                  isHebrew
                 );
 
                 const formattedDate =
-                  new Intl.DateTimeFormat("he-IL", {
+                  new Intl.DateTimeFormat(locale, {
                     weekday: "long",
                     day: "2-digit",
                     month: "2-digit",
@@ -427,7 +496,8 @@ export default function CalendarPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-black text-white">
-                          {pollDay.poll?.title ?? "סקר"}
+                          {pollDay.poll?.title ??
+                            (isHebrew ? "סקר" : "Poll")}
                         </p>
 
                         <p className="mt-1 text-sm text-white/45">
@@ -447,10 +517,18 @@ export default function CalendarPage() {
 
                       <span>
                         {cleanTime(pollDay.start_time) ||
-                          "לא הוגדרה שעה"}
+                          (isHebrew
+                            ? "לא הוגדרה שעה"
+                            : "No time selected")}
 
                         {pollDay.end_time
-                          ? ` עד ${cleanTime(pollDay.end_time)}`
+                          ? isHebrew
+                            ? ` עד ${cleanTime(
+                                pollDay.end_time
+                              )}`
+                            : ` to ${cleanTime(
+                                pollDay.end_time
+                              )}`
                           : ""}
                       </span>
                     </div>

@@ -14,44 +14,48 @@ import {
 } from "lucide-react";
 
 import { useCurrentMember } from "@/hooks/useCurrentMember";
-
-const navigationItems = [
-  {
-    label: "ראשי",
-    href: "/",
-    icon: LayoutDashboard,
-  },
-  {
-    label: "סקרים",
-    href: "/polls",
-    icon: ClipboardList,
-  },
-  {
-    label: "לוח שנה",
-    href: "/calendar",
-    icon: CalendarDays,
-  },
-  {
-    label: "שחקנים",
-    href: "/members",
-    icon: UsersRound,
-  },
-  {
-    label: "סטטיסטיקות",
-    href: "/statistics",
-    icon: BarChart3,
-  },
-  {
-    label: "הגדרות",
-    href: "/settings",
-    icon: Settings,
-  },
-];
+import useLanguage from "@/hooks/useLanguage";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+
   const { member } = useCurrentMember();
+  const { t, direction } = useLanguage();
+
+  const navigationItems = [
+    {
+      label: t.navigation.dashboard,
+      href: "/",
+      icon: LayoutDashboard,
+    },
+    {
+      label: t.navigation.polls,
+      href: "/polls",
+      icon: ClipboardList,
+    },
+    {
+      label: t.navigation.calendar,
+      href: "/calendar",
+      icon: CalendarDays,
+    },
+    {
+      label: t.navigation.members,
+      href: "/members",
+      icon: UsersRound,
+    },
+    {
+      label: t.navigation.statistics,
+      href: "/statistics",
+      icon: BarChart3,
+    },
+    {
+      label: t.navigation.settings,
+      href: "/settings",
+      icon: Settings,
+    },
+  ];
 
   function isActive(href: string) {
     if (href === "/") {
@@ -69,16 +73,27 @@ export default function Sidebar() {
   const memberInitial =
     member?.fullName?.trim().charAt(0).toUpperCase() || "N";
 
+  const memberRoleLabel =
+    member?.role === "admin"
+      ? direction === "rtl"
+        ? "מנהל הקבוצה"
+        : "Team Admin"
+      : member?.role === "captain"
+        ? direction === "rtl"
+          ? "קפטן הקבוצה"
+          : "Team Captain"
+        : direction === "rtl"
+          ? "שחקן הקבוצה"
+          : "Team Player";
+
   return (
     <aside
-      dir="rtl"
+      dir={direction}
       className="fixed right-0 top-0 z-40 hidden h-screen w-72 flex-col overflow-hidden border-l border-white/[0.08] bg-[#07080d] lg:flex"
     >
-      {/* Purple background glow */}
       <div className="pointer-events-none absolute right-[-100px] top-[-100px] h-80 w-80 rounded-full bg-purple-600/20 blur-[110px]" />
 
       <div className="relative flex h-full flex-col">
-        {/* Branding */}
         <header className="border-b border-white/[0.08] px-5 pb-5 pt-6">
           <div className="flex flex-col items-center text-center">
             <div className="relative flex h-28 w-28 items-center justify-center">
@@ -104,7 +119,9 @@ export default function Sidebar() {
             />
 
             <p className="mt-2 text-xs text-white/40">
-              ניהול הקבוצה במקום אחד
+              {direction === "rtl"
+                ? "ניהול הקבוצה במקום אחד"
+                : "Manage your team in one place"}
             </p>
           </div>
 
@@ -119,7 +136,13 @@ export default function Sidebar() {
               />
             </div>
 
-            <div className="min-w-0 text-right">
+            <div
+              className={`min-w-0 ${
+                direction === "rtl"
+                  ? "text-right"
+                  : "text-left"
+              }`}
+            >
               <p className="truncate text-xs font-bold text-white">
                 Israeli Premier League
               </p>
@@ -131,7 +154,6 @@ export default function Sidebar() {
           </div>
         </header>
 
-        {/* Navigation */}
         <nav className="flex-1 space-y-1.5 overflow-y-auto px-4 py-5">
           {navigationItems.map((item) => {
             const Icon = item.icon;
@@ -148,7 +170,13 @@ export default function Sidebar() {
                 }`}
               >
                 {active && (
-                  <span className="absolute inset-y-2 right-0 w-1 rounded-l-full bg-amber-300" />
+                  <span
+                    className={`absolute inset-y-2 w-1 bg-amber-300 ${
+                      direction === "rtl"
+                        ? "right-0 rounded-l-full"
+                        : "left-0 rounded-r-full"
+                    }`}
+                  />
                 )}
 
                 <span className="relative">{item.label}</span>
@@ -167,8 +195,11 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* User */}
         <footer className="border-t border-white/[0.08] p-4">
+          <div className="mb-3">
+            <LanguageSwitcher />
+          </div>
+
           <div className="rounded-3xl border border-white/[0.08] bg-white/[0.035] p-3">
             <div className="flex items-center gap-3">
               <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-800 text-lg font-black text-white shadow-[0_0_20px_rgba(168,85,247,0.25)]">
@@ -179,21 +210,30 @@ export default function Sidebar() {
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-white">
-                  {member?.fullName ?? "חבר קבוצה"}
+                  {member?.fullName ??
+                    (direction === "rtl"
+                      ? "חבר קבוצה"
+                      : "Team Member")}
                 </p>
 
                 <p className="mt-0.5 text-xs text-white/35">
-                  {member?.role === "admin"
-                    ? "מנהל הקבוצה"
-                    : "שחקן הקבוצה"}
+                  {memberRoleLabel}
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={handleLogout}
-                title="התנתקות"
-                aria-label="התנתקות"
+                title={
+                  direction === "rtl"
+                    ? "התנתקות"
+                    : "Log out"
+                }
+                aria-label={
+                  direction === "rtl"
+                    ? "התנתקות"
+                    : "Log out"
+                }
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white/35 transition hover:bg-red-500/10 hover:text-red-300"
               >
                 <LogOut size={18} />

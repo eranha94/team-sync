@@ -17,6 +17,7 @@ import {
 
 import { supabase } from "@/lib/supabase";
 import { useCurrentMember } from "@/hooks/useCurrentMember";
+import useLanguage from "@/hooks/useLanguage";
 
 type Poll = {
   id: string;
@@ -73,8 +74,11 @@ function cleanTime(value: string | null) {
   return value ? value.slice(0, 5) : "";
 }
 
-function formatHebrewDate(dateString: string) {
-  return new Intl.DateTimeFormat("he-IL", {
+function formatDate(
+  dateString: string,
+  locale: "he-IL" | "en-US"
+) {
+  return new Intl.DateTimeFormat(locale, {
     weekday: "long",
     day: "2-digit",
     month: "2-digit",
@@ -87,6 +91,8 @@ export default function PollDetailsPage() {
   const pollId = params.id as string;
 
   const { member } = useCurrentMember();
+  const { direction, isHebrew } = useLanguage();
+  const locale = isHebrew ? "he-IL" : "en-US";
 
   const [poll, setPoll] = useState<Poll | null>(null);
   const [pollDays, setPollDays] = useState<PollDay[]>([]);
@@ -208,12 +214,14 @@ export default function PollDetailsPage() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "לא ניתן לטעון את הסקר"
+          : isHebrew
+            ? "לא ניתן לטעון את הסקר"
+            : "Unable to load the poll"
       );
     } finally {
       setIsLoading(false);
     }
-  }, [pollId, member?.id, selectedMemberId]);
+  }, [pollId, member?.id, selectedMemberId, isHebrew]);
 
   useEffect(() => {
     loadPoll();
@@ -299,13 +307,19 @@ export default function PollDetailsPage() {
   async function saveAvailability() {
     if (!selectedMemberId) {
       setMessageType("error");
-      setMessage("יש לבחור שחקן");
+      setMessage(
+        isHebrew ? "יש לבחור שחקן" : "Please select a player"
+      );
       return;
     }
 
     if (Object.keys(answers).length === 0) {
       setMessageType("error");
-      setMessage("יש לסמן זמינות לפחות ביום אחד");
+      setMessage(
+        isHebrew
+          ? "יש לסמן זמינות לפחות ביום אחד"
+          : "Please mark availability for at least one day"
+      );
       return;
     }
 
@@ -334,7 +348,11 @@ export default function PollDetailsPage() {
       }
 
       setMessageType("success");
-      setMessage("הזמינות נשמרה בהצלחה");
+      setMessage(
+        isHebrew
+          ? "הזמינות נשמרה בהצלחה"
+          : "Availability was saved successfully"
+      );
 
       await loadPoll();
     } catch (error) {
@@ -344,7 +362,9 @@ export default function PollDetailsPage() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "שמירת הזמינות נכשלה"
+          : isHebrew
+            ? "שמירת הזמינות נכשלה"
+            : "Failed to save availability"
       );
     } finally {
       setIsSaving(false);
@@ -354,13 +374,21 @@ export default function PollDetailsPage() {
   async function createSession(day: PollDay) {
     if (!isAdmin) {
       setMessageType("error");
-      setMessage("רק מנהל יכול לקבוע סשן");
+      setMessage(
+        isHebrew
+          ? "רק מנהל יכול לקבוע סשן"
+          : "Only an administrator can schedule a session"
+      );
       return;
     }
 
     if (!day.start_time) {
       setMessageType("error");
-      setMessage("לא הוגדרה שעת התחלה ליום הזה");
+      setMessage(
+        isHebrew
+          ? "לא הוגדרה שעת התחלה ליום הזה"
+          : "No start time was set for this day"
+      );
       return;
     }
 
@@ -370,14 +398,24 @@ export default function PollDetailsPage() {
 
     if (alreadyExists) {
       setMessageType("error");
-      setMessage("כבר קיים סשן ליום הזה");
+      setMessage(
+        isHebrew
+          ? "כבר קיים סשן ליום הזה"
+          : "A session already exists for this day"
+      );
       return;
     }
 
     const approved = window.confirm(
-      `לקבוע סשן ביום ${formatHebrewDate(
-        day.date_x
-      )} בשעה ${cleanTime(day.start_time)}?`
+      isHebrew
+        ? `לקבוע סשן ביום ${formatDate(
+            day.date_x,
+            locale
+          )} בשעה ${cleanTime(day.start_time)}?`
+        : `Schedule a session on ${formatDate(
+            day.date_x,
+            locale
+          )} at ${cleanTime(day.start_time)}?`
     );
 
     if (!approved) {
@@ -392,8 +430,12 @@ export default function PollDetailsPage() {
         poll_id: pollId,
         poll_day_id: day.id,
         title: poll?.title
-          ? `סשן - ${poll.title}`
-          : "סשן קבוצתי",
+          ? isHebrew
+            ? `סשן - ${poll.title}`
+            : `Session - ${poll.title}`
+          : isHebrew
+            ? "סשן קבוצתי"
+            : "Team session",
         session_date: day.date_x,
         start_time: day.start_time,
         end_time: day.end_time,
@@ -405,7 +447,11 @@ export default function PollDetailsPage() {
       }
 
       setMessageType("success");
-      setMessage("הסשן נקבע בהצלחה");
+      setMessage(
+        isHebrew
+          ? "הסשן נקבע בהצלחה"
+          : "The session was scheduled successfully"
+      );
 
       await loadPoll();
     } catch (error) {
@@ -415,7 +461,9 @@ export default function PollDetailsPage() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "יצירת הסשן נכשלה"
+          : isHebrew
+            ? "יצירת הסשן נכשלה"
+            : "Failed to create the session"
       );
     } finally {
       setCreatingSessionDayId(null);
@@ -424,12 +472,15 @@ export default function PollDetailsPage() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
+      <main
+        dir={direction}
+        className="flex min-h-screen items-center justify-center"
+      >
         <div className="text-center">
           <Loader2 className="mx-auto animate-spin text-amber-300" />
 
           <p className="mt-4 text-sm text-white/45">
-            טוען את הסקר...
+            {isHebrew ? "טוען את הסקר..." : "Loading poll..."}
           </p>
         </div>
       </main>
@@ -438,16 +489,22 @@ export default function PollDetailsPage() {
 
   if (!poll) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-5">
+      <main
+        dir={direction}
+        className="flex min-h-screen items-center justify-center px-5"
+      >
         <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-8 text-center text-red-300">
-          הסקר לא נמצא
+          {isHebrew ? "הסקר לא נמצא" : "Poll not found"}
         </div>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
+    <main
+      dir={direction}
+      className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10"
+    >
       <header className="mb-8">
         <p className="text-sm font-bold tracking-[0.2em] text-amber-300">
           TEAM SYNC
@@ -460,9 +517,9 @@ export default function PollDetailsPage() {
             </h1>
 
             <p className="mt-2 text-white/45">
-              {formatHebrewDate(poll.start_date)}
-              {" עד "}
-              {formatHebrewDate(poll.end_date)}
+              {formatDate(poll.start_date, locale)}
+              {isHebrew ? " עד " : " to "}
+              {formatDate(poll.end_date, locale)}
             </p>
           </div>
 
@@ -473,7 +530,13 @@ export default function PollDetailsPage() {
                 : "bg-white/10 text-white/50"
             }`}
           >
-            {poll.status === "open" ? "סקר פתוח" : "סקר סגור"}
+            {poll.status === "open"
+              ? isHebrew
+                ? "סקר פתוח"
+                : "Open poll"
+              : isHebrew
+                ? "סקר סגור"
+                : "Closed poll"}
           </span>
         </div>
       </header>
@@ -492,19 +555,19 @@ export default function PollDetailsPage() {
 
       <section className="grid gap-4 sm:grid-cols-3">
         <SummaryCard
-          title="שחקנים פעילים"
+          title={isHebrew ? "שחקנים פעילים" : "Active players"}
           value={members.length}
           icon={<UsersRound size={22} />}
         />
 
         <SummaryCard
-          title="ענו לסקר"
+          title={isHebrew ? "ענו לסקר" : "Answered"}
           value={answeredMemberIds.size}
           icon={<CheckCircle2 size={22} />}
         />
 
         <SummaryCard
-          title="טרם ענו"
+          title={isHebrew ? "טרם ענו" : "Waiting"}
           value={waitingMembers.length}
           icon={<HelpCircle size={22} />}
         />
@@ -513,18 +576,20 @@ export default function PollDetailsPage() {
       <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-5 sm:p-7">
         <div className="mb-6">
           <h2 className="text-xl font-black">
-            מילוי זמינות
+            {isHebrew ? "מילוי זמינות" : "Submit availability"}
           </h2>
 
           <p className="mt-1 text-sm text-white/40">
-            בחר שחקן וסמן את הזמינות שלו בכל יום
+            {isHebrew
+              ? "בחר שחקן וסמן את הזמינות שלו בכל יום"
+              : "Select a player and mark availability for each day"}
           </p>
         </div>
 
         {isAdmin ? (
           <div className="mb-6">
             <label className="mb-2 block text-sm text-white/55">
-              בחירת שחקן
+              {isHebrew ? "בחירת שחקן" : "Select player"}
             </label>
 
             <select
@@ -534,7 +599,9 @@ export default function PollDetailsPage() {
               }
               className="h-12 w-full rounded-2xl border border-white/10 bg-[#10131a] px-4 outline-none focus:border-amber-300/50"
             >
-              <option value="">בחר שחקן</option>
+              <option value="">
+                {isHebrew ? "בחר שחקן" : "Select a player"}
+              </option>
 
               {members.map((currentMember) => (
                 <option
@@ -548,7 +615,9 @@ export default function PollDetailsPage() {
           </div>
         ) : (
           <div className="mb-6 rounded-2xl bg-white/[0.05] px-4 py-3 text-sm">
-            ממלא זמינות עבור:{" "}
+            {isHebrew
+              ? "ממלא זמינות עבור:"
+              : "Submitting availability for:"}{" "}
             <strong>{member?.fullName}</strong>
           </div>
         )}
@@ -560,7 +629,7 @@ export default function PollDetailsPage() {
               className="rounded-3xl border border-white/10 bg-black/20 p-5"
             >
               <h3 className="font-bold">
-                {formatHebrewDate(day.date_x)}
+                {formatDate(day.date_x, locale)}
               </h3>
 
               <p className="mt-1 flex items-center gap-2 text-sm text-white/40">
@@ -569,14 +638,16 @@ export default function PollDetailsPage() {
                 {cleanTime(day.start_time) || "--:--"}
 
                 {day.end_time
-                  ? ` עד ${cleanTime(day.end_time)}`
+                  ? isHebrew
+                    ? ` עד ${cleanTime(day.end_time)}`
+                    : ` to ${cleanTime(day.end_time)}`
                   : ""}
               </p>
 
               <div className="mt-5 grid grid-cols-3 gap-2">
                 <AvailabilityButton
                   active={answers[day.id] === "available"}
-                  label="זמין"
+                  label={isHebrew ? "זמין" : "Available"}
                   icon={<Check size={17} />}
                   activeClass="border-emerald-400 bg-emerald-400 text-black"
                   onClick={() =>
@@ -589,7 +660,7 @@ export default function PollDetailsPage() {
 
                 <AvailabilityButton
                   active={answers[day.id] === "maybe"}
-                  label="אולי"
+                  label={isHebrew ? "אולי" : "Maybe"}
                   icon={<HelpCircle size={17} />}
                   activeClass="border-amber-400 bg-amber-400 text-black"
                   onClick={() =>
@@ -602,7 +673,7 @@ export default function PollDetailsPage() {
 
                 <AvailabilityButton
                   active={answers[day.id] === "unavailable"}
-                  label="לא"
+                  label={isHebrew ? "לא" : "No"}
                   icon={<X size={17} />}
                   activeClass="border-red-400 bg-red-400 text-black"
                   onClick={() =>
@@ -630,12 +701,12 @@ export default function PollDetailsPage() {
           {isSaving ? (
             <>
               <Loader2 size={18} className="animate-spin" />
-              שומר...
+              {isHebrew ? "שומר..." : "Saving..."}
             </>
           ) : (
             <>
               <Save size={18} />
-              שמירת זמינות
+              {isHebrew ? "שמירת זמינות" : "Save availability"}
             </>
           )}
         </button>
@@ -645,11 +716,13 @@ export default function PollDetailsPage() {
         <section className="mt-6">
           <div className="mb-4">
             <h2 className="text-xl font-black">
-              תוצאות הסקר
+              {isHebrew ? "תוצאות הסקר" : "Poll results"}
             </h2>
 
             <p className="mt-1 text-sm text-white/40">
-              פירוט הזמינות ואפשרות לקביעת סשן
+              {isHebrew
+                ? "פירוט הזמינות ואפשרות לקביעת סשן"
+                : "Availability details and session scheduling"}
             </p>
           </div>
 
@@ -675,7 +748,7 @@ export default function PollDetailsPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-lg font-black">
-                          {formatHebrewDate(result.day.date_x)}
+                          {formatDate(result.day.date_x, locale)}
                         </h3>
 
                         {isBestDay && (
@@ -691,16 +764,20 @@ export default function PollDetailsPage() {
                           "--:--"}
 
                         {result.day.end_time
-                          ? ` עד ${cleanTime(
-                              result.day.end_time
-                            )}`
+                          ? isHebrew
+                            ? ` עד ${cleanTime(
+                                result.day.end_time
+                              )}`
+                            : ` to ${cleanTime(
+                                result.day.end_time
+                              )}`
                           : ""}
                       </p>
                     </div>
 
                     {isBestDay && (
                       <span className="w-fit rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-black">
-                        היום המומלץ
+                        {isHebrew ? "היום המומלץ" : "Recommended day"}
                       </span>
                     )}
                   </div>
@@ -708,47 +785,61 @@ export default function PollDetailsPage() {
                   <div className="mt-5 grid grid-cols-3 gap-3">
                     <ResultCount
                       value={result.available.length}
-                      label="זמינים"
+                      label={isHebrew ? "זמינים" : "Available"}
                       className="bg-emerald-500/10 text-emerald-300"
                     />
 
                     <ResultCount
                       value={result.maybe.length}
-                      label="אולי"
+                      label={isHebrew ? "אולי" : "Maybe"}
                       className="bg-amber-500/10 text-amber-300"
                     />
 
                     <ResultCount
                       value={result.unavailable.length}
-                      label="לא זמינים"
+                      label={isHebrew ? "לא זמינים" : "Unavailable"}
                       className="bg-red-500/10 text-red-300"
                     />
                   </div>
 
                   <div className="mt-5 space-y-4">
                     <MemberNames
-                      title="זמינים"
+                      title={isHebrew ? "זמינים" : "Available"}
                       members={result.available}
-                      emptyText="אף אחד עדיין לא סימן זמין"
+                      emptyText={
+                        isHebrew
+                          ? "אף אחד עדיין לא סימן זמין"
+                          : "No one has marked Available yet"
+                      }
                     />
 
                     <MemberNames
-                      title="אולי"
+                      title={isHebrew ? "אולי" : "Maybe"}
                       members={result.maybe}
-                      emptyText="אין תשובות אולי"
+                      emptyText={
+                        isHebrew
+                          ? "אין תשובות אולי"
+                          : "No Maybe responses"
+                      }
                     />
 
                     <MemberNames
-                      title="לא זמינים"
+                      title={isHebrew ? "לא זמינים" : "Unavailable"}
                       members={result.unavailable}
-                      emptyText="אין תשובות לא זמין"
+                      emptyText={
+                        isHebrew
+                          ? "אין תשובות לא זמין"
+                          : "No Unavailable responses"
+                      }
                     />
                   </div>
 
                   {existingSession ? (
                     <div className="mt-6 flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-300">
                       <CalendarCheck size={18} />
-                      נקבע סשן ליום הזה
+                      {isHebrew
+                        ? "נקבע סשן ליום הזה"
+                        : "A session is scheduled for this day"}
                     </div>
                   ) : (
                     <button
@@ -768,12 +859,16 @@ export default function PollDetailsPage() {
                             size={18}
                             className="animate-spin"
                           />
-                          קובע סשן...
+                          {isHebrew
+                            ? "קובע סשן..."
+                            : "Scheduling session..."}
                         </>
                       ) : (
                         <>
                           <CalendarCheck size={18} />
-                          קבע כסשן
+                          {isHebrew
+                            ? "קבע כסשן"
+                            : "Schedule session"}
                         </>
                       )}
                     </button>
@@ -788,7 +883,7 @@ export default function PollDetailsPage() {
       {isAdmin && waitingMembers.length > 0 && (
         <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
           <h2 className="font-black">
-            עדיין לא ענו
+            {isHebrew ? "עדיין לא ענו" : "Still waiting"}
           </h2>
 
           <div className="mt-4 flex flex-wrap gap-2">

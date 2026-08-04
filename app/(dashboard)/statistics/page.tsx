@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
+import useLanguage from "@/hooks/useLanguage";
 
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
@@ -82,8 +83,11 @@ type StatisticsData = {
   availability: Availability[];
 };
 
-function formatHebrewDate(dateString: string) {
-  return new Intl.DateTimeFormat("he-IL", {
+function formatDate(
+  dateString: string,
+  locale: "he-IL" | "en-US"
+) {
+  return new Intl.DateTimeFormat(locale, {
     weekday: "long",
     day: "2-digit",
     month: "2-digit",
@@ -96,6 +100,9 @@ function clampPercentage(value: number) {
 }
 
 export default function StatisticsPage() {
+  const { direction, isHebrew } = useLanguage();
+  const locale = isHebrew ? "he-IL" : "en-US";
+
   const [data, setData] = useState<StatisticsData>({
     members: [],
     polls: [],
@@ -184,14 +191,16 @@ export default function StatisticsPage() {
         setMessage(
           error instanceof Error
             ? error.message
-            : "לא ניתן לטעון את נתוני הסטטיסטיקה"
+            : isHebrew
+              ? "לא ניתן לטעון את נתוני הסטטיסטיקה"
+              : "Unable to load statistics data"
         );
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
       }
     },
-    []
+    [isHebrew]
   );
 
   useEffect(() => {
@@ -339,16 +348,27 @@ export default function StatisticsPage() {
       <Loading
         fullScreen
         size="lg"
-        text="טוען את נתוני הסטטיסטיקה..."
+        text={
+          isHebrew
+            ? "טוען את נתוני הסטטיסטיקה..."
+            : "Loading statistics..."
+        }
       />
     );
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
+    <main
+      dir={direction}
+      className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10"
+    >
       <PageTitle
-        title="סטטיסטיקות"
-        subtitle="תמונת מצב מלאה של ההיענות והזמינות בקבוצה"
+        title={isHebrew ? "סטטיסטיקות" : "Statistics"}
+        subtitle={
+          isHebrew
+            ? "תמונת מצב מלאה של ההיענות והזמינות בקבוצה"
+            : "A complete overview of team response and availability"
+        }
         icon={<BarChart3 size={26} />}
         action={
           <button
@@ -364,7 +384,13 @@ export default function StatisticsPage() {
               }
             />
 
-            {isRefreshing ? "מרענן..." : "רענון נתונים"}
+            {isRefreshing
+              ? isHebrew
+                ? "מרענן..."
+                : "Refreshing..."
+              : isHebrew
+                ? "רענון נתונים"
+                : "Refresh data"}
           </button>
         }
       />
@@ -379,38 +405,68 @@ export default function StatisticsPage() {
       )}
 
       <Section
-        title="תמונת מצב"
-        subtitle="מדדים כלליים מכל הסקרים שנשמרו במערכת"
+        title={isHebrew ? "תמונת מצב" : "Overview"}
+        subtitle={
+          isHebrew
+            ? "מדדים כלליים מכל הסקרים שנשמרו במערכת"
+            : "General metrics from all polls saved in the system"
+        }
       >
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            title="חברי קבוצה פעילים"
+            title={
+              isHebrew
+                ? "חברי קבוצה פעילים"
+                : "Active team members"
+            }
             value={data.members.length}
-            subtitle="חברים מורשים במערכת"
+            subtitle={
+              isHebrew
+                ? "חברים מורשים במערכת"
+                : "Authorized members in the system"
+            }
             icon={<UsersRound size={24} />}
             color="purple"
           />
 
           <StatCard
-            title="אחוז מענה"
+            title={isHebrew ? "אחוז מענה" : "Response rate"}
             value={`${memberResponseRate}%`}
-            subtitle={`${membersWhoAnswered} מתוך ${data.members.length} חברים`}
+            subtitle={
+              isHebrew
+                ? `${membersWhoAnswered} מתוך ${data.members.length} חברים`
+                : `${membersWhoAnswered} out of ${data.members.length} members`
+            }
             icon={<UserCheck size={24} />}
             color="green"
           />
 
           <StatCard
-            title="זמינות חיובית"
+            title={
+              isHebrew
+                ? "זמינות חיובית"
+                : "Positive availability"
+            }
             value={`${positiveAvailabilityRate}%`}
-            subtitle={`${totalAvailable} סימוני זמין`}
+            subtitle={
+              isHebrew
+                ? `${totalAvailable} סימוני זמין`
+                : `${totalAvailable} available responses`
+            }
             icon={<CheckCircle2 size={24} />}
             color="gold"
           />
 
           <StatCard
-            title="סקרים במערכת"
+            title={
+              isHebrew ? "סקרים במערכת" : "Polls in system"
+            }
             value={data.polls.length}
-            subtitle={`${data.pollDays.length} ימי זמינות`}
+            subtitle={
+              isHebrew
+                ? `${data.pollDays.length} ימי זמינות`
+                : `${data.pollDays.length} availability days`
+            }
             icon={<CalendarDays size={24} />}
             color="blue"
           />
@@ -418,26 +474,40 @@ export default function StatisticsPage() {
       </Section>
 
       <Section
-        title="התפלגות תשובות"
-        subtitle="חלוקת כל תשובות הזמינות שנשמרו במערכת"
+        title={
+          isHebrew ? "התפלגות תשובות" : "Response distribution"
+        }
+        subtitle={
+          isHebrew
+            ? "חלוקת כל תשובות הזמינות שנשמרו במערכת"
+            : "Distribution of all saved availability responses"
+        }
         className="mt-10"
       >
         {totalAnswers === 0 ? (
           <EmptyState
             icon={<BarChart3 size={34} />}
-            title="אין עדיין נתוני זמינות"
-            description="לאחר שחברי הקבוצה ימלאו סקרים, הנתונים יוצגו כאן."
+            title={
+              isHebrew
+                ? "אין עדיין נתוני זמינות"
+                : "No availability data yet"
+            }
+            description={
+              isHebrew
+                ? "לאחר שחברי הקבוצה ימלאו סקרים, הנתונים יוצגו כאן."
+                : "Once team members complete polls, the data will appear here."
+            }
           />
         ) : (
           <div className="grid gap-6 xl:grid-cols-[1fr_1.3fr]">
             <Card variant="purple" glow padding="lg">
               <h3 className="text-lg font-black text-white">
-                סיכום תשובות
+                {isHebrew ? "סיכום תשובות" : "Response summary"}
               </h3>
 
               <div className="mt-7 space-y-6">
                 <ProgressRow
-                  label="זמין"
+                  label={isHebrew ? "זמין" : "Available"}
                   value={totalAvailable}
                   total={totalAnswers}
                   className="bg-emerald-400"
@@ -448,7 +518,7 @@ export default function StatisticsPage() {
                 />
 
                 <ProgressRow
-                  label="אולי"
+                  label={isHebrew ? "אולי" : "Maybe"}
                   value={totalMaybe}
                   total={totalAnswers}
                   className="bg-amber-400"
@@ -457,7 +527,7 @@ export default function StatisticsPage() {
                 />
 
                 <ProgressRow
-                  label="לא זמין"
+                  label={isHebrew ? "לא זמין" : "Unavailable"}
                   value={totalUnavailable}
                   total={totalAnswers}
                   className="bg-red-400"
@@ -472,7 +542,7 @@ export default function StatisticsPage() {
                 </p>
 
                 <p className="mt-1 text-xs text-white/40">
-                  סך כל התשובות
+                  {isHebrew ? "סך כל התשובות" : "Total responses"}
                 </p>
               </div>
             </Card>
@@ -486,12 +556,14 @@ export default function StatisticsPage() {
                         <Trophy size={22} />
 
                         <span className="text-sm font-black">
-                          היום הפופולרי ביותר
+                          {isHebrew
+                            ? "היום הפופולרי ביותר"
+                            : "Most popular day"}
                         </span>
                       </div>
 
                       <h3 className="mt-5 text-2xl font-black text-white">
-                        {formatHebrewDate(bestDay.date)}
+                        {formatDate(bestDay.date, locale)}
                       </h3>
                     </div>
 
@@ -501,7 +573,7 @@ export default function StatisticsPage() {
                       </p>
 
                       <p className="text-xs font-bold">
-                        זמינים
+                        {isHebrew ? "זמינים" : "Available"}
                       </p>
                     </div>
                   </div>
@@ -509,34 +581,42 @@ export default function StatisticsPage() {
                   <div className="mt-8 grid grid-cols-3 gap-3">
                     <SmallMetric
                       value={bestDay.available}
-                      label="זמינים"
+                      label={isHebrew ? "זמינים" : "Available"}
                       className="bg-emerald-500/10 text-emerald-300"
                     />
 
                     <SmallMetric
                       value={bestDay.maybe}
-                      label="אולי"
+                      label={isHebrew ? "אולי" : "Maybe"}
                       className="bg-amber-500/10 text-amber-300"
                     />
 
                     <SmallMetric
                       value={bestDay.unavailable}
-                      label="לא זמינים"
+                      label={isHebrew ? "לא זמינים" : "Unavailable"}
                       className="bg-red-500/10 text-red-300"
                     />
                   </div>
 
                   <p className="mt-6 text-sm leading-7 text-white/45">
-                    היום הזה קיבל את מספר סימוני הזמינות
-                    הגבוה ביותר מבין כל הימים שנשמרו
-                    במערכת.
+                    {isHebrew
+                      ? "היום הזה קיבל את מספר סימוני הזמינות הגבוה ביותר מבין כל הימים שנשמרו במערכת."
+                      : "This day received the highest number of available responses among all saved days."}
                   </p>
                 </>
               ) : (
                 <EmptyState
                   icon={<Trophy size={30} />}
-                  title="אין יום מומלץ"
-                  description="עדיין אין מספיק נתונים לחישוב היום הפופולרי."
+                  title={
+                    isHebrew
+                      ? "אין יום מומלץ"
+                      : "No recommended day"
+                  }
+                  description={
+                    isHebrew
+                      ? "עדיין אין מספיק נתונים לחישוב היום הפופולרי."
+                      : "There is not enough data yet to calculate the most popular day."
+                  }
                 />
               )}
             </Card>
@@ -545,15 +625,31 @@ export default function StatisticsPage() {
       </Section>
 
       <Section
-        title="ביצועי חברי הקבוצה"
-        subtitle="מי משתתף באופן קבוע ומי עדיין כמעט לא עונה"
+        title={
+          isHebrew
+            ? "ביצועי חברי הקבוצה"
+            : "Team member performance"
+        }
+        subtitle={
+          isHebrew
+            ? "מי משתתף באופן קבוע ומי עדיין כמעט לא עונה"
+            : "Who participates regularly and who rarely responds"
+        }
         className="mt-10"
       >
         {memberStatistics.length === 0 ? (
           <EmptyState
             icon={<UsersRound size={34} />}
-            title="אין חברים להצגה"
-            description="לא נמצאו חברי קבוצה פעילים."
+            title={
+              isHebrew
+                ? "אין חברים להצגה"
+                : "No members to display"
+            }
+            description={
+              isHebrew
+                ? "לא נמצאו חברי קבוצה פעילים."
+                : "No active team members were found."
+            }
           />
         ) : (
           <>
@@ -572,7 +668,9 @@ export default function StatisticsPage() {
 
                     <div>
                       <p className="text-xs font-black tracking-[0.16em] text-purple-300">
-                        המשתתף הפעיל ביותר
+                        {isHebrew
+                          ? "המשתתף הפעיל ביותר"
+                          : "Most active participant"}
                       </p>
 
                       <h3 className="mt-2 text-2xl font-black text-white">
@@ -580,8 +678,9 @@ export default function StatisticsPage() {
                       </h3>
 
                       <p className="mt-1 text-sm text-white/40">
-                        {mostActiveMember.answeredDays} תשובות
-                        נשמרו
+                        {isHebrew
+                          ? `${mostActiveMember.answeredDays} תשובות נשמרו`
+                          : `${mostActiveMember.answeredDays} responses saved`}
                       </p>
                     </div>
                   </div>
@@ -592,7 +691,7 @@ export default function StatisticsPage() {
                     </p>
 
                     <p className="text-xs font-bold">
-                      השתתפות
+                      {isHebrew ? "השתתפות" : "Participation"}
                     </p>
                   </div>
                 </div>
@@ -601,12 +700,22 @@ export default function StatisticsPage() {
 
             <div className="overflow-hidden rounded-3xl border border-white/[0.08] bg-[#12141c]/90">
               <div className="hidden grid-cols-[2fr_repeat(5,1fr)] gap-3 border-b border-white/[0.08] px-5 py-4 text-xs font-bold text-white/35 md:grid">
-                <span>שחקן</span>
-                <span className="text-center">השתתפות</span>
-                <span className="text-center">תשובות</span>
-                <span className="text-center">זמין</span>
-                <span className="text-center">אולי</span>
-                <span className="text-center">לא זמין</span>
+                <span>{isHebrew ? "שחקן" : "Player"}</span>
+                <span className="text-center">
+                  {isHebrew ? "השתתפות" : "Participation"}
+                </span>
+                <span className="text-center">
+                  {isHebrew ? "תשובות" : "Responses"}
+                </span>
+                <span className="text-center">
+                  {isHebrew ? "זמין" : "Available"}
+                </span>
+                <span className="text-center">
+                  {isHebrew ? "אולי" : "Maybe"}
+                </span>
+                <span className="text-center">
+                  {isHebrew ? "לא זמין" : "Unavailable"}
+                </span>
               </div>
 
               <div className="divide-y divide-white/[0.06]">
@@ -629,37 +738,41 @@ export default function StatisticsPage() {
                           </p>
 
                           <p className="mt-0.5 text-xs text-white/30">
-                            מקום {index + 1}
+                            {isHebrew
+                              ? `מקום ${index + 1}`
+                              : `Rank ${index + 1}`}
                           </p>
                         </div>
                       </div>
 
                       <MobileMetric
-                        label="השתתפות"
+                        label={
+                          isHebrew ? "השתתפות" : "Participation"
+                        }
                         value={`${memberStatistic.participationRate}%`}
                         className="text-purple-300"
                       />
 
                       <MobileMetric
-                        label="תשובות"
+                        label={isHebrew ? "תשובות" : "Responses"}
                         value={memberStatistic.answeredDays}
                         className="text-white"
                       />
 
                       <MobileMetric
-                        label="זמין"
+                        label={isHebrew ? "זמין" : "Available"}
                         value={memberStatistic.availableCount}
                         className="text-emerald-300"
                       />
 
                       <MobileMetric
-                        label="אולי"
+                        label={isHebrew ? "אולי" : "Maybe"}
                         value={memberStatistic.maybeCount}
                         className="text-amber-300"
                       />
 
                       <MobileMetric
-                        label="לא זמין"
+                        label={isHebrew ? "לא זמין" : "Unavailable"}
                         value={
                           memberStatistic.unavailableCount
                         }
@@ -675,15 +788,29 @@ export default function StatisticsPage() {
       </Section>
 
       <Section
-        title="הימים החזקים ביותר"
-        subtitle="דירוג הימים לפי מספר השחקנים שסימנו זמין"
+        title={
+          isHebrew ? "הימים החזקים ביותר" : "Top days"
+        }
+        subtitle={
+          isHebrew
+            ? "דירוג הימים לפי מספר השחקנים שסימנו זמין"
+            : "Days ranked by the number of players marked available"
+        }
         className="mt-10"
       >
         {dayStatistics.length === 0 ? (
           <EmptyState
             icon={<CalendarDays size={34} />}
-            title="אין ימים להצגה"
-            description="לא נמצאו ימי סקר עם נתונים."
+            title={
+              isHebrew
+                ? "אין ימים להצגה"
+                : "No days to display"
+            }
+            description={
+              isHebrew
+                ? "לא נמצאו ימי סקר עם נתונים."
+                : "No poll days with data were found."
+            }
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -707,11 +834,13 @@ export default function StatisticsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-xs font-black text-purple-300">
-                        מקום {index + 1}
+                        {isHebrew
+                          ? `מקום ${index + 1}`
+                          : `Rank ${index + 1}`}
                       </p>
 
                       <h3 className="mt-2 font-black text-white">
-                        {formatHebrewDate(day.date)}
+                        {formatDate(day.date, locale)}
                       </h3>
                     </div>
 
@@ -721,7 +850,7 @@ export default function StatisticsPage() {
                       </p>
 
                       <p className="text-[10px] font-bold">
-                        זמינים
+                        {isHebrew ? "זמינים" : "Available"}
                       </p>
                     </div>
                   </div>
@@ -739,7 +868,9 @@ export default function StatisticsPage() {
 
                   <div className="mt-3 flex items-center justify-between text-xs">
                     <span className="text-white/35">
-                      זמינות הקבוצה
+                      {isHebrew
+                        ? "זמינות הקבוצה"
+                        : "Team availability"}
                     </span>
 
                     <span className="font-black text-purple-300">

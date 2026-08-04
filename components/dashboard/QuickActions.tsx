@@ -9,38 +9,55 @@ import {
 
 import Card from "@/components/ui/Card";
 import Section from "@/components/ui/Section";
+import useLanguage from "@/hooks/useLanguage";
 
 type QuickActionItem = {
   href: string;
-  title: string;
-  description: string;
+  titleHe: string;
+  titleEn: string;
+  descriptionHe: string;
+  descriptionEn: string;
   icon: React.ReactNode;
 };
 
-const actions: QuickActionItem[] = [
-  {
-    href: "/polls/new",
-    title: "פתיחת סקר חדש",
-    description: "יצירת סקר זמינות חדש",
-    icon: <ClipboardPlus size={24} />,
-  },
-  {
-    href: "/members",
-    title: "ניהול שחקנים",
-    description: "הוספה וניהול של חברי הקבוצה",
-    icon: <UsersRound size={24} />,
-  },
-  {
-    href: "/polls",
-    title: "כל הסקרים",
-    description: "צפייה וניהול של הסקרים",
-    icon: <CalendarDays size={24} />,
-  },
-];
-
 export default function QuickActions() {
+  const { isHebrew } = useLanguage();
+
+  const actions: QuickActionItem[] = [
+    {
+      href: "/polls/new",
+      titleHe: "פתיחת סקר חדש",
+      titleEn: "Create New Poll",
+      descriptionHe: "יצירת סקר זמינות חדש",
+      descriptionEn: "Create a new availability poll",
+      icon: <ClipboardPlus size={24} />,
+    },
+    {
+      href: "/members",
+      titleHe: "ניהול שחקנים",
+      titleEn: "Manage Players",
+      descriptionHe: "הוספה וניהול של חברי הקבוצה",
+      descriptionEn: "Add and manage team members",
+      icon: <UsersRound size={24} />,
+    },
+    {
+      href: "/polls",
+      titleHe: "כל הסקרים",
+      titleEn: "All Polls",
+      descriptionHe: "צפייה וניהול של הסקרים",
+      descriptionEn: "View and manage all polls",
+      icon: <CalendarDays size={24} />,
+    },
+  ];
+
   return (
-    <Section title="פעולות מהירות">
+    <Section
+      title={
+        isHebrew
+          ? "פעולות מהירות"
+          : "Quick Actions"
+      }
+    >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {actions.map((action) => (
           <Link
@@ -60,11 +77,15 @@ export default function QuickActions() {
 
                 <div>
                   <h3 className="font-black text-white">
-                    {action.title}
+                    {isHebrew
+                      ? action.titleHe
+                      : action.titleEn}
                   </h3>
 
                   <p className="mt-1 text-sm text-white/40">
-                    {action.description}
+                    {isHebrew
+                      ? action.descriptionHe
+                      : action.descriptionEn}
                   </p>
                 </div>
               </div>

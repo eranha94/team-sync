@@ -13,6 +13,7 @@ import Card, {
   CardHeader,
 } from "@/components/ui/Card";
 import GlowButton from "@/components/ui/GlowButton";
+import useLanguage from "@/hooks/useLanguage";
 
 type ChangePinResponse = {
   success: boolean;
@@ -26,6 +27,8 @@ type ChangePinCardProps = {
 export default function ChangePinCard({
   phone,
 }: ChangePinCardProps) {
+  const { isHebrew } = useLanguage();
+
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -52,31 +55,51 @@ export default function ChangePinCard({
 
     if (!phone) {
       setMessageType("error");
-      setMessage("לא נמצא מספר טלפון למשתמש");
+      setMessage(
+        isHebrew
+          ? "לא נמצא מספר טלפון למשתמש"
+          : "No phone number was found for this user"
+      );
       return;
     }
 
     if (!/^\d{4,6}$/.test(currentPin)) {
       setMessageType("error");
-      setMessage("יש להזין קוד נוכחי בן 4 עד 6 ספרות");
+      setMessage(
+        isHebrew
+          ? "יש להזין קוד נוכחי בן 4 עד 6 ספרות"
+          : "Enter your current PIN using 4 to 6 digits"
+      );
       return;
     }
 
     if (!/^\d{4,6}$/.test(newPin)) {
       setMessageType("error");
-      setMessage("הקוד החדש חייב להכיל 4 עד 6 ספרות");
+      setMessage(
+        isHebrew
+          ? "הקוד החדש חייב להכיל 4 עד 6 ספרות"
+          : "The new PIN must contain 4 to 6 digits"
+      );
       return;
     }
 
     if (newPin !== confirmPin) {
       setMessageType("error");
-      setMessage("הקוד החדש ואימות הקוד אינם תואמים");
+      setMessage(
+        isHebrew
+          ? "הקוד החדש ואימות הקוד אינם תואמים"
+          : "The new PIN and PIN confirmation do not match"
+      );
       return;
     }
 
     if (currentPin === newPin) {
       setMessageType("error");
-      setMessage("הקוד החדש חייב להיות שונה מהקוד הנוכחי");
+      setMessage(
+        isHebrew
+          ? "הקוד החדש חייב להיות שונה מהקוד הנוכחי"
+          : "The new PIN must be different from the current PIN"
+      );
       return;
     }
 
@@ -103,9 +126,13 @@ export default function ChangePinCard({
 
       if (!response.ok || !data.success) {
         setMessageType("error");
+
         setMessage(
-          data.message ?? "שינוי הקוד נכשל"
+          isHebrew
+            ? data.message ?? "שינוי הקוד נכשל"
+            : getEnglishChangePinError(response.status)
         );
+
         return;
       }
 
@@ -115,13 +142,19 @@ export default function ChangePinCard({
 
       setMessageType("success");
       setMessage(
-        data.message ?? "הקוד האישי עודכן בהצלחה"
+        isHebrew
+          ? data.message ?? "הקוד האישי עודכן בהצלחה"
+          : "Your personal PIN was updated successfully"
       );
     } catch (error) {
       console.error("Change PIN error:", error);
 
       setMessageType("error");
-      setMessage("לא ניתן לשנות את הקוד כרגע");
+      setMessage(
+        isHebrew
+          ? "לא ניתן לשנות את הקוד כרגע"
+          : "Unable to change the PIN right now"
+      );
     } finally {
       setIsSaving(false);
     }
@@ -130,8 +163,16 @@ export default function ChangePinCard({
   return (
     <Card variant="purple" glow padding="lg">
       <CardHeader
-        title="שינוי קוד אישי"
-        description="בחר קוד חדש בן 4 עד 6 ספרות"
+        title={
+          isHebrew
+            ? "שינוי קוד אישי"
+            : "Change Personal PIN"
+        }
+        description={
+          isHebrew
+            ? "בחר קוד חדש בן 4 עד 6 ספרות"
+            : "Choose a new PIN containing 4 to 6 digits"
+        }
         icon={<KeyRound size={22} />}
       />
 
@@ -142,10 +183,15 @@ export default function ChangePinCard({
         >
           <PinInput
             id="currentPin"
-            label="קוד נוכחי"
+            label={
+              isHebrew
+                ? "קוד נוכחי"
+                : "Current PIN"
+            }
             value={currentPin}
             show={showCurrentPin}
             disabled={isSaving}
+            isHebrew={isHebrew}
             onChange={setCurrentPin}
             onToggle={() =>
               setShowCurrentPin(
@@ -156,10 +202,15 @@ export default function ChangePinCard({
 
           <PinInput
             id="newPin"
-            label="קוד חדש"
+            label={
+              isHebrew
+                ? "קוד חדש"
+                : "New PIN"
+            }
             value={newPin}
             show={showNewPin}
             disabled={isSaving}
+            isHebrew={isHebrew}
             onChange={setNewPin}
             onToggle={() =>
               setShowNewPin(
@@ -170,10 +221,15 @@ export default function ChangePinCard({
 
           <PinInput
             id="confirmPin"
-            label="אימות קוד חדש"
+            label={
+              isHebrew
+                ? "אימות קוד חדש"
+                : "Confirm New PIN"
+            }
             value={confirmPin}
             show={showNewPin}
             disabled={isSaving}
+            isHebrew={isHebrew}
             onChange={setConfirmPin}
             onToggle={() =>
               setShowNewPin(
@@ -202,7 +258,9 @@ export default function ChangePinCard({
             leftIcon={<Save size={18} />}
             fullWidth
           >
-            עדכון קוד אישי
+            {isHebrew
+              ? "עדכון קוד אישי"
+              : "Update Personal PIN"}
           </GlowButton>
         </form>
       </CardContent>
@@ -216,6 +274,7 @@ function PinInput({
   value,
   show,
   disabled,
+  isHebrew,
   onChange,
   onToggle,
 }: {
@@ -224,6 +283,7 @@ function PinInput({
   value: string;
   show: boolean;
   disabled: boolean;
+  isHebrew: boolean;
   onChange: (value: string) => void;
   onToggle: () => void;
 }) {
@@ -241,6 +301,11 @@ function PinInput({
           id={id}
           type={show ? "text" : "password"}
           inputMode="numeric"
+          autoComplete={
+            id === "currentPin"
+              ? "current-password"
+              : "new-password"
+          }
           maxLength={6}
           value={value}
           disabled={disabled}
@@ -258,7 +323,22 @@ function PinInput({
           onClick={onToggle}
           disabled={disabled}
           aria-label={
-            show ? "הסתר קוד" : "הצג קוד"
+            show
+              ? isHebrew
+                ? "הסתר קוד"
+                : "Hide PIN"
+              : isHebrew
+                ? "הצג קוד"
+                : "Show PIN"
+          }
+          title={
+            show
+              ? isHebrew
+                ? "הסתר קוד"
+                : "Hide PIN"
+              : isHebrew
+                ? "הצג קוד"
+                : "Show PIN"
           }
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white/35 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
         >
@@ -271,4 +351,21 @@ function PinInput({
       </div>
     </div>
   );
+}
+
+function getEnglishChangePinError(status: number) {
+  switch (status) {
+    case 400:
+      return "The entered PIN details are invalid";
+
+    case 401:
+    case 403:
+      return "The current PIN is incorrect";
+
+    case 404:
+      return "The user was not found";
+
+    default:
+      return "Unable to change the PIN right now";
+  }
 }

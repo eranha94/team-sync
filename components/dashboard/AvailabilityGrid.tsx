@@ -6,6 +6,7 @@ import { CalendarDays, Crown } from "lucide-react";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import Section from "@/components/ui/Section";
+import useLanguage from "@/hooks/useLanguage";
 
 export type AvailabilityDay = {
   id: string;
@@ -21,8 +22,11 @@ type AvailabilityGridProps = {
   bestDayId?: string | null;
 };
 
-function formatHebrewDate(dateString: string) {
-  return new Intl.DateTimeFormat("he-IL", {
+function formatDate(
+  dateString: string,
+  locale: "he-IL" | "en-US"
+) {
+  return new Intl.DateTimeFormat(locale, {
     weekday: "long",
     day: "2-digit",
     month: "2-digit",
@@ -33,15 +37,23 @@ export default function AvailabilityGrid({
   days,
   bestDayId,
 }: AvailabilityGridProps) {
+  const { direction, isHebrew } = useLanguage();
+
+  const locale = isHebrew ? "he-IL" : "en-US";
+
   return (
     <Section
-      title="זמינות לפי ימים"
+      title={
+        isHebrew
+          ? "זמינות לפי ימים"
+          : "Availability by day"
+      }
       action={
         <Link
           href="/polls"
           className="text-sm font-bold text-purple-300 transition hover:text-purple-200"
         >
-          כל הסקרים
+          {isHebrew ? "כל הסקרים" : "All polls"}
         </Link>
       }
     >
@@ -49,8 +61,16 @@ export default function AvailabilityGrid({
         <Card>
           <EmptyState
             icon={<CalendarDays size={30} />}
-            title="אין ימים להצגה"
-            description="לא הוגדרו עדיין ימים בסקר הפתוח."
+            title={
+              isHebrew
+                ? "אין ימים להצגה"
+                : "No days to display"
+            }
+            description={
+              isHebrew
+                ? "לא הוגדרו עדיין ימים בסקר הפתוח."
+                : "No days have been added to the open poll yet."
+            }
           />
         </Card>
       ) : (
@@ -67,22 +87,34 @@ export default function AvailabilityGrid({
                 className="relative overflow-hidden"
               >
                 {isBestDay && (
-                  <div className="absolute left-4 top-4 flex items-center gap-1 rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-black">
+                  <div
+                    className={`absolute top-4 flex items-center gap-1 rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-black ${
+                      direction === "rtl"
+                        ? "left-4"
+                        : "right-4"
+                    }`}
+                  >
                     <Crown size={13} />
-                    מומלץ
+                    {isHebrew ? "מומלץ" : "Recommended"}
                   </div>
                 )}
 
-                <div className="flex items-start justify-between gap-3">
+                <div
+                  dir={direction}
+                  className="flex items-start justify-between gap-3"
+                >
                   <div>
                     <h3 className="font-black text-white">
-                      {formatHebrewDate(day.date)}
+                      {formatDate(day.date, locale)}
                     </h3>
 
                     <p className="mt-1 text-sm text-white/40">
                       {day.startTime || "--:--"}
+
                       {day.endTime
-                        ? ` עד ${day.endTime}`
+                        ? isHebrew
+                          ? ` עד ${day.endTime}`
+                          : ` to ${day.endTime}`
                         : ""}
                     </p>
                   </div>
@@ -101,7 +133,7 @@ export default function AvailabilityGrid({
                     </p>
 
                     <p className="mt-1 text-xs text-white/40">
-                      זמינים
+                      {isHebrew ? "זמינים" : "Available"}
                     </p>
                   </div>
 
@@ -111,7 +143,7 @@ export default function AvailabilityGrid({
                     </p>
 
                     <p className="mt-1 text-xs text-white/40">
-                      אולי
+                      {isHebrew ? "אולי" : "Maybe"}
                     </p>
                   </div>
                 </div>

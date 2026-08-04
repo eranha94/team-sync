@@ -12,6 +12,8 @@ import {
   Phone,
   UserRound,
 } from "lucide-react";
+import useLanguage from "@/hooks/useLanguage";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 type PlayerPosition =
   | "goalkeeper"
@@ -72,6 +74,11 @@ const POSITION_OPTIONS: PositionOption[] = [
 ];
 
 export default function RegisterPage() {
+      const {
+    tr,
+    direction,
+    isHebrew,
+  } = useLanguage();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [positions, setPositions] = useState<PlayerPosition[]>([]);
@@ -117,39 +124,62 @@ export default function RegisterPage() {
 
     const cleanName = fullName.trim();
     const cleanPhone = phone.replace(/\D/g, "");
+    
     const cleanPin = pin.replace(/\D/g, "");
     const cleanConfirmPin = confirmPin.replace(/\D/g, "");
+if (cleanName.length < 2) {
+  setMessage(
+    isHebrew
+      ? "יש להזין שם מלא"
+      : "Please enter your full name"
+  );
+  return;
+}
 
-    if (cleanName.length < 2) {
-      setMessage("יש להזין שם מלא");
-      return;
-    }
+if (cleanName.length > 80) {
+  setMessage(
+    isHebrew
+      ? "השם שהוזן ארוך מדי"
+      : "The name you entered is too long"
+  );
+  return;
+}
 
-    if (cleanName.length > 80) {
-      setMessage("השם שהוזן ארוך מדי");
-      return;
-    }
+if (cleanPhone.length < 8 || cleanPhone.length > 15) {
+  setMessage(
+    isHebrew
+      ? "יש להזין מספר טלפון תקין"
+      : "Please enter a valid phone number"
+  );
+  return;
+}
 
-    if (!/^05\d{8}$/.test(cleanPhone)) {
-      setMessage("יש להזין מספר טלפון ישראלי תקין");
-      return;
-    }
+if (positions.length === 0) {
+  setMessage(
+    isHebrew
+      ? "יש לבחור לפחות עמדה אחת"
+      : "Please select at least one position"
+  );
+  return;
+}
 
-    if (positions.length === 0) {
-      setMessage("יש לבחור לפחות עמדה אחת");
-      return;
-    }
+if (!/^\d{4,6}$/.test(cleanPin)) {
+  setMessage(
+    isHebrew
+      ? "הקוד האישי חייב להכיל 4 עד 6 ספרות"
+      : "The personal PIN must contain 4 to 6 digits"
+  );
+  return;
+}
 
-    if (!/^\d{4,6}$/.test(cleanPin)) {
-      setMessage("הקוד האישי חייב להכיל 4 עד 6 ספרות");
-      return;
-    }
-
-    if (cleanPin !== cleanConfirmPin) {
-      setMessage("הקוד האישי ואימות הקוד אינם תואמים");
-      return;
-    }
-
+if (cleanPin !== cleanConfirmPin) {
+  setMessage(
+    isHebrew
+      ? "הקוד האישי ואימות הקוד אינם תואמים"
+      : "The personal PIN and PIN confirmation do not match"
+  );
+  return;
+}
     setIsLoading(true);
 
     try {
@@ -178,37 +208,46 @@ export default function RegisterPage() {
         return;
       }
 
-      setIsSubmitted(true);
-      setMessageType("success");
-      setMessage(
-        data.message ??
-          "בקשת ההצטרפות נשלחה וממתינה לאישור מנהל הקבוצה"
-      );
+setIsSubmitted(true);
+setMessageType("success");
 
-      setFullName("");
-      setPhone("");
-      setPositions([]);
-      setPin("");
-      setConfirmPin("");
-    } catch (error) {
-      console.error("Registration error:", error);
+setMessage(
+  isHebrew
+    ? data.message ??
+        "בקשת ההצטרפות נשלחה וממתינה לאישור מנהל הקבוצה"
+    : "Your join request was sent successfully and is waiting for admin approval."
+);
+setFullName("");
+setPhone("");
+setPositions([]);
+setPin("");
+setConfirmPin("");
+} catch (error) {
+  console.error("Registration error:", error);
 
-      setMessageType("error");
-      setMessage("אירעה שגיאה לא צפויה. נסה שוב");
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  setMessageType("error");
+  setMessage(
+    isHebrew
+      ? "אירעה שגיאה לא צפויה. נסה שוב"
+      : "An unexpected error occurred. Please try again."
+  );
+} finally {
+  setIsLoading(false);
+}
+}
 
   if (isSubmitted) {
     return (
       <main
-        dir="rtl"
+        dir={direction}
         className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#06080d] px-5 py-10 text-white"
       >
         <div className="pointer-events-none absolute right-[-120px] top-[-120px] h-[340px] w-[340px] rounded-full bg-purple-600/20 blur-[100px]" />
 
         <div className="pointer-events-none absolute bottom-[-140px] left-[-100px] h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
+        <div className="absolute left-5 top-5 z-20 sm:left-8 sm:top-8">
+  <LanguageSwitcher />
+</div>
 
         <section className="relative z-10 w-full max-w-md">
           <div className="rounded-[30px] border border-emerald-400/20 bg-white/[0.06] p-8 text-center shadow-2xl backdrop-blur-xl">
@@ -216,29 +255,31 @@ export default function RegisterPage() {
               <CheckCircle2 size={42} />
             </div>
 
-            <h1 className="mt-6 text-2xl font-black">
-              הבקשה נשלחה
-            </h1>
+<h1 className="mt-6 text-2xl font-black">
+  {tr("register.requestSent")}
+</h1>
 
-            <p className="mt-3 text-sm leading-7 text-white/55">
-              הבקשה שלך ממתינה לאישור מנהל הקבוצה.
-              לאחר האישור יהיה ניתן להיכנס באמצעות מספר
-              הטלפון והקוד האישי שבחרת.
-            </p>
+<p className="mt-3 text-sm leading-7 text-white/55">
+  {tr("register.requestSentDescription")}
+</p>
 
-            {message && (
-              <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-                {message}
-              </div>
-            )}
+{message && (
+  <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+    {message}
+  </div>
+)}
 
-            <Link
-              href="/login"
-              className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-purple-500 to-purple-700 font-bold text-white transition hover:from-purple-400 hover:to-purple-600"
-            >
-              מעבר לעמוד הכניסה
-              <ArrowRight size={18} />
-            </Link>
+<Link
+  href="/login"
+  className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-purple-500 to-purple-700 font-bold text-white transition hover:from-purple-400 hover:to-purple-600"
+>
+  {tr("register.goToLogin")}
+
+  <ArrowRight
+    size={18}
+    className={direction === "ltr" ? "rotate-180" : ""}
+  />
+</Link>
           </div>
         </section>
       </main>
@@ -247,12 +288,15 @@ export default function RegisterPage() {
 
   return (
     <main
-      dir="rtl"
+      dir={direction}
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#06080d] px-5 py-10 text-white"
     >
       <div className="pointer-events-none absolute right-[-120px] top-[-120px] h-[340px] w-[340px] rounded-full bg-purple-600/20 blur-[100px]" />
 
       <div className="pointer-events-none absolute bottom-[-140px] left-[-100px] h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
+      <div className="absolute left-5 top-5 z-20 sm:left-8 sm:top-8">
+  <LanguageSwitcher />
+</div>
 
       <section className="relative z-10 w-full max-w-lg">
         <div className="mb-8 text-center">
@@ -265,13 +309,13 @@ export default function RegisterPage() {
           </p>
 
           <h1 className="text-3xl font-black tracking-tight">
-            בקשת הצטרפות
-          </h1>
+  {tr("register.title")}
+</h1>
 
-          <p className="mt-3 text-sm leading-6 text-white/55">
-            מלא את הפרטים, בחר עמדות וקוד אישי. הכניסה
-            תתאפשר לאחר אישור מנהל הקבוצה.
-          </p>
+       
+<p className="mt-3 text-sm leading-6 text-white/55">
+  {tr("register.subtitle")}
+</p>
         </div>
 
         <div className="rounded-[28px] border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-xl">
@@ -284,7 +328,7 @@ export default function RegisterPage() {
                 htmlFor="fullName"
                 className="mb-2 block text-sm font-medium text-white/70"
               >
-                שם מלא
+                {tr("register.fullName")}
               </label>
 
               <div className="flex items-center rounded-2xl border border-white/10 bg-black/25 px-4 transition focus-within:border-purple-300/60 focus-within:ring-4 focus-within:ring-purple-300/10">
@@ -304,7 +348,7 @@ export default function RegisterPage() {
                     setFullName(event.target.value);
                     clearMessage();
                   }}
-                  placeholder="שם פרטי ומשפחה"
+                  placeholder={tr("register.fullNamePlaceholder")}
                   className="h-14 w-full bg-transparent px-3 text-base outline-none placeholder:text-white/20 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
@@ -315,7 +359,7 @@ export default function RegisterPage() {
                 htmlFor="phone"
                 className="mb-2 block text-sm font-medium text-white/70"
               >
-                מספר טלפון
+                {tr("register.phone")}
               </label>
 
               <div className="flex items-center rounded-2xl border border-white/10 bg-black/25 px-4 transition focus-within:border-purple-300/60 focus-within:ring-4 focus-within:ring-purple-300/10">
@@ -349,17 +393,17 @@ export default function RegisterPage() {
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-white/70">
-                    עמדות משחק
+                    {tr("register.positions")}
                   </p>
 
                   <p className="mt-1 text-xs text-white/35">
-                    ניתן לבחור יותר מעמדה אחת
+                    {tr("register.multiplePositions")}
                   </p>
                 </div>
 
                 {positions.length > 0 && (
                   <span className="rounded-full border border-purple-400/20 bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-200">
-                    נבחרו {positions.length}
+                   {tr("register.selected")} {positions.length}
                   </span>
                 )}
               </div>
@@ -405,18 +449,18 @@ export default function RegisterPage() {
 
               {positions.length === 0 && (
                 <p className="mt-3 text-xs text-white/30">
-                  יש לבחור לפחות עמדה אחת
+                  {tr("register.chooseOnePosition")}
                 </p>
               )}
             </div>
 
             <PinField
               id="pin"
-              label="קוד אישי"
+              label={tr("register.pin")}
               value={pin}
               show={showPin}
               disabled={isLoading}
-              placeholder="בחר 4–6 ספרות"
+              placeholder={isHebrew ? "בחר 4–6 ספרות" : "Choose 4–6 digits"}
               onChange={(value) => {
                 setPin(value);
                 clearMessage();
@@ -432,7 +476,11 @@ export default function RegisterPage() {
               value={confirmPin}
               show={showConfirmPin}
               disabled={isLoading}
-              placeholder="הקלד שוב את הקוד"
+              placeholder={
+  isHebrew
+    ? "הקלד שוב את הקוד"
+    : "Enter the PIN again"
+}
               onChange={(value) => {
                 setConfirmPin(value);
                 clearMessage();
@@ -460,30 +508,29 @@ export default function RegisterPage() {
               disabled={isLoading}
               className="h-14 w-full rounded-2xl bg-gradient-to-l from-purple-500 to-purple-700 font-bold text-white shadow-[0_12px_35px_rgba(126,34,206,0.25)] transition hover:-translate-y-0.5 hover:from-purple-400 hover:to-purple-600 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isLoading
-                ? "שולח בקשה..."
-                : "שליחת בקשת הצטרפות"}
+{isLoading
+  ? tr("register.submitting")
+  : tr("register.submit")}
             </button>
           </form>
 
           <div className="mt-6 rounded-2xl border border-amber-400/15 bg-amber-400/[0.06] px-4 py-3 text-xs leading-6 text-amber-200/70">
-            ההרשמה אינה מאפשרת כניסה אוטומטית. מנהל
-            הקבוצה צריך לאשר את הבקשה תחילה.
+           {tr("register.pendingNote")}
           </div>
 
           <div className="mt-6 text-center text-sm text-white/40">
-            כבר רשום?{" "}
+           {tr("register.alreadyRegistered")}
             <Link
               href="/login"
               className="font-bold text-purple-300 transition hover:text-purple-200"
             >
-              מעבר לכניסה
+              {tr("register.goToLogin")}
             </Link>
           </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-white/25">
-          NightmareCamp © 2026
+          NightmareCamp © 2026 by EranHa
         </p>
       </section>
     </main>

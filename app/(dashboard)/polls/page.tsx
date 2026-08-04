@@ -17,6 +17,7 @@ import {
 
 import { supabase } from "@/lib/supabase";
 import { useCurrentMember } from "@/hooks/useCurrentMember";
+import useLanguage from "@/hooks/useLanguage";
 
 type Poll = {
   id: string;
@@ -66,8 +67,11 @@ function cleanTime(value: string | null) {
   return value ? value.slice(0, 5) : "";
 }
 
-function formatHebrewDate(dateString: string) {
-  return new Intl.DateTimeFormat("he-IL", {
+function formatDate(
+  dateString: string,
+  locale: "he-IL" | "en-US"
+) {
+  return new Intl.DateTimeFormat(locale, {
     weekday: "long",
     day: "2-digit",
     month: "2-digit",
@@ -84,8 +88,10 @@ function getLocalDateString() {
   return `${year}-${month}-${day}`;
 }
 
-export default function DashboardPage() {
+export default function PollsPage() {
   const { member } = useCurrentMember();
+  const { direction, isHebrew } = useLanguage();
+  const locale = isHebrew ? "he-IL" : "en-US";
 
   const [activeMembersCount, setActiveMembersCount] = useState(0);
 
@@ -269,12 +275,14 @@ export default function DashboardPage() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "לא ניתן לטעון את נתוני הדאשבורד"
+          : isHebrew
+            ? "לא ניתן לטעון את נתוני הסקרים"
+            : "Unable to load poll data"
       );
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isHebrew]);
 
   useEffect(() => {
     loadDashboard();
@@ -351,7 +359,7 @@ export default function DashboardPage() {
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-amber-400" />
 
           <p className="mt-4 text-sm text-white/45">
-            טוען את נתוני הקבוצה...
+            {isHebrew ? "טוען את נתוני הקבוצה..." : "Loading team data..."}
           </p>
         </div>
       </main>
@@ -360,7 +368,7 @@ export default function DashboardPage() {
 
   return (
     <main
-      dir="rtl"
+      dir={direction}
       className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10"
     >
       <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -370,11 +378,13 @@ export default function DashboardPage() {
           </p>
 
           <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-            שלום {member?.fullName ?? "מנהל"} 👋
+            {isHebrew ? "שלום" : "Hello"} {member?.fullName ?? (isHebrew ? "מנהל" : "Admin")} 👋
           </h1>
 
           <p className="mt-2 text-white/45">
-            הנה תמונת המצב של הקבוצה
+            {isHebrew
+              ? "הנה תמונת המצב של הקבוצה"
+              : "Here is the current team overview"}
           </p>
         </div>
 
@@ -384,7 +394,7 @@ export default function DashboardPage() {
           className="flex h-11 w-fit items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-4 text-sm font-bold transition hover:bg-white/[0.09]"
         >
           <RefreshCw size={17} />
-          רענון נתונים
+          {isHebrew ? "רענון נתונים" : "Refresh data"}
         </button>
       </header>
 
@@ -396,41 +406,51 @@ export default function DashboardPage() {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardCard
-          title="חברי קבוצה פעילים"
+          title={isHebrew ? "חברי קבוצה פעילים" : "Active team members"}
           value={activeMembersCount.toString()}
-          subtitle="חברים מורשים במערכת"
+          subtitle={isHebrew ? "חברים מורשים במערכת" : "Authorized team members"}
           icon={<UsersRound size={22} />}
         />
 
         <DashboardCard
-          title="ענו לסקר"
+          title={isHebrew ? "ענו לסקר" : "Answered the poll"}
           value={answeredMembersCount.toString()}
           subtitle={
             openPoll
-              ? `מתוך ${activeMembersCount} חברים`
-              : "אין כרגע סקר פתוח"
+              ? isHebrew
+                ? `מתוך ${activeMembersCount} חברים`
+                : `Out of ${activeMembersCount} members`
+              : isHebrew
+                ? "אין כרגע סקר פתוח"
+                : "There is no open poll"
           }
           icon={<CheckCircle2 size={22} />}
         />
 
         <DashboardCard
-          title="טרם ענו"
+          title={isHebrew ? "טרם ענו" : "Not answered yet"}
           value={waitingMembersCount.toString()}
           subtitle={
             openPoll
-              ? "ממתינים לתגובה"
-              : "אין כרגע סקר פתוח"
+              ? isHebrew
+                ? "ממתינים לתגובה"
+                : "Waiting for a response"
+              : isHebrew
+                ? "אין כרגע סקר פתוח"
+                : "There is no open poll"
           }
           icon={<CircleHelp size={22} />}
         />
 
         <DashboardCard
-          title="אחוז היענות"
+          title={isHebrew ? "אחוז היענות" : "Response rate"}
           value={`${responseRate}%`}
           subtitle={
             openPoll
               ? openPoll.title
-              : "פתח סקר כדי להתחיל"
+              : isHebrew
+                ? "פתח סקר כדי להתחיל"
+                : "Create a poll to get started"
           }
           icon={<ClipboardPlus size={22} />}
         />
@@ -447,7 +467,7 @@ export default function DashboardPage() {
                   <Gamepad2 size={21} />
 
                   <span className="text-sm font-bold">
-                    הסשן הקרוב
+                    {isHebrew ? "הסשן הקרוב" : "Upcoming session"}
                   </span>
                 </div>
 
@@ -462,8 +482,9 @@ export default function DashboardPage() {
                       className="text-emerald-300"
                     />
 
-                    {formatHebrewDate(
-                      upcomingSession.session_date
+                    {formatDate(
+                      upcomingSession.session_date,
+                      locale
                     )}
                   </div>
 
@@ -478,7 +499,7 @@ export default function DashboardPage() {
                     )}
 
                     {upcomingSession.end_time
-                      ? ` עד ${cleanTime(
+                      ? `${isHebrew ? " עד " : " to "}${cleanTime(
                           upcomingSession.end_time
                         )}`
                       : ""}
@@ -493,7 +514,7 @@ export default function DashboardPage() {
                   </p>
 
                   <p className="mt-1 text-xs font-bold">
-                    שחקנים זמינים
+                    {isHebrew ? "שחקנים זמינים" : "Available players"}
                   </p>
                 </div>
 
@@ -502,7 +523,7 @@ export default function DashboardPage() {
                     href={`/polls/${upcomingSession.poll_id}`}
                     className="flex min-w-28 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] px-5 text-center text-sm font-bold transition hover:bg-white/[0.1]"
                   >
-                    צפייה בפרטים
+                    {isHebrew ? "צפייה בפרטים" : "View details"}
                   </Link>
                 )}
               </div>
@@ -518,11 +539,13 @@ export default function DashboardPage() {
 
                 <div>
                   <h2 className="font-black">
-                    אין סשן קרוב
+                    {isHebrew ? "אין סשן קרוב" : "No upcoming session"}
                   </h2>
 
                   <p className="mt-1 text-sm text-white/40">
-                    קבע סשן מתוך תוצאות הסקר
+                    {isHebrew
+                      ? "קבע סשן מתוך תוצאות הסקר"
+                      : "Schedule a session from the poll results"}
                   </p>
                 </div>
               </div>
@@ -532,7 +555,7 @@ export default function DashboardPage() {
                   href={`/polls/${openPoll.id}`}
                   className="flex h-11 items-center justify-center rounded-xl bg-amber-400 px-5 text-sm font-bold text-black transition hover:bg-amber-300"
                 >
-                  מעבר לסקר
+                  {isHebrew ? "מעבר לסקר" : "Go to poll"}
                 </Link>
               )}
             </div>
@@ -552,18 +575,24 @@ export default function DashboardPage() {
                         <Crown size={22} />
 
                         <span className="text-sm font-bold">
-                          היום המומלץ לסשן
+                          {isHebrew
+                            ? "היום המומלץ לסשן"
+                            : "Recommended session day"}
                         </span>
                       </div>
 
                       <h2 className="mt-5 text-3xl font-black">
-                        {formatHebrewDate(bestDay.date)}
+                        {formatDate(bestDay.date, locale)}
                       </h2>
 
                       <p className="mt-2 text-lg font-semibold text-white/65">
                         {bestDay.startTime
-                          ? `בשעה ${bestDay.startTime}`
-                          : "לא הוגדרה שעה"}
+                          ? isHebrew
+                            ? `בשעה ${bestDay.startTime}`
+                            : `At ${bestDay.startTime}`
+                          : isHebrew
+                            ? "לא הוגדרה שעה"
+                            : "No time selected"}
                       </p>
                     </div>
 
@@ -573,33 +602,38 @@ export default function DashboardPage() {
                       </p>
 
                       <p className="text-xs font-bold">
-                        זמינים
+                        {isHebrew ? "זמינים" : "Available"}
                       </p>
                     </div>
                   </div>
 
                   <p className="mt-7 text-sm leading-7 text-white/50">
-                    ביום הזה קיימת כמות הזמינים הגבוהה
-                    ביותר. בנוסף יש {bestDay.maybeCount}{" "}
-                    שסימנו אולי.
+                    {isHebrew
+                      ? `ביום הזה קיימת כמות הזמינים הגבוהה ביותר. בנוסף יש ${bestDay.maybeCount} שסימנו אולי.`
+                      : `This day has the highest number of available players. ${bestDay.maybeCount} marked maybe.`}
                   </p>
 
                   <Link
                     href={`/polls/${openPoll.id}`}
                     className="mt-6 inline-flex h-12 items-center gap-2 rounded-2xl bg-amber-400 px-5 font-bold text-black transition hover:bg-amber-300"
                   >
-                    צפייה בסקר
-                    <ArrowLeft size={18} />
+                    {isHebrew ? "צפייה בסקר" : "View poll"}
+                    <ArrowLeft
+                       size={18}
+                       className={direction === "ltr" ? "rotate-180" : ""}
+                     />
                   </Link>
                 </>
               ) : (
                 <div className="py-8 text-center">
                   <p className="text-lg font-bold">
-                    עדיין אין ימים בסקר
+                    {isHebrew ? "עדיין אין ימים בסקר" : "No poll days yet"}
                   </p>
 
                   <p className="mt-2 text-sm text-white/45">
-                    הוסף ימים לסקר כדי לקבל המלצה
+                    {isHebrew
+                      ? "הוסף ימים לסקר כדי לקבל המלצה"
+                      : "Add poll days to receive a recommendation"}
                   </p>
                 </div>
               )}
@@ -607,7 +641,7 @@ export default function DashboardPage() {
 
             <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
               <p className="text-sm text-white/45">
-                הסקר הפתוח
+                {isHebrew ? "הסקר הפתוח" : "Open poll"}
               </p>
 
               <h2 className="mt-2 text-xl font-black">
@@ -615,9 +649,9 @@ export default function DashboardPage() {
               </h2>
 
               <p className="mt-2 text-sm text-white/40">
-                {formatHebrewDate(openPoll.start_date)}
-                {" עד "}
-                {formatHebrewDate(openPoll.end_date)}
+                {formatDate(openPoll.start_date, locale)}
+                {isHebrew ? " עד " : " to "}
+                {formatDate(openPoll.end_date, locale)}
               </p>
 
               <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/10">
@@ -631,7 +665,7 @@ export default function DashboardPage() {
 
               <div className="mt-3 flex items-center justify-between text-xs">
                 <span className="text-white/40">
-                  התקדמות המענה
+                  {isHebrew ? "התקדמות המענה" : "Response progress"}
                 </span>
 
                 <span className="font-bold text-amber-300">
@@ -643,7 +677,7 @@ export default function DashboardPage() {
                 href={`/polls/${openPoll.id}`}
                 className="mt-6 flex h-11 items-center justify-center rounded-xl bg-white/10 text-sm font-bold transition hover:bg-white/15"
               >
-                מעבר למילוי הסקר
+                {isHebrew ? "מעבר למילוי הסקר" : "Open poll"}
               </Link>
             </div>
           </section>
@@ -651,14 +685,14 @@ export default function DashboardPage() {
           <section className="mt-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-black">
-                זמינות לפי ימים
+                {isHebrew ? "זמינות לפי ימים" : "Availability by day"}
               </h2>
 
               <Link
                 href="/polls"
                 className="text-sm font-bold text-amber-300"
               >
-                כל הסקרים
+                {isHebrew ? "כל הסקרים" : "All polls"}
               </Link>
             </div>
 
@@ -675,21 +709,21 @@ export default function DashboardPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-bold">
-                        {formatHebrewDate(day.date)}
+                        {formatDate(day.date, locale)}
                       </h3>
 
                       <p className="mt-1 text-sm text-white/40">
                         {day.startTime || "--:--"}
 
                         {day.endTime
-                          ? ` עד ${day.endTime}`
+                          ? `${isHebrew ? " עד " : " to "}${day.endTime}`
                           : ""}
                       </p>
                     </div>
 
                     {bestDay?.id === day.id && (
                       <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-black">
-                        מומלץ
+                        {isHebrew ? "מומלץ" : "Recommended"}
                       </span>
                     )}
                   </div>
@@ -701,7 +735,7 @@ export default function DashboardPage() {
                       </p>
 
                       <p className="mt-1 text-xs text-white/40">
-                        זמינים
+                        {isHebrew ? "זמינים" : "Available"}
                       </p>
                     </div>
 
@@ -711,7 +745,7 @@ export default function DashboardPage() {
                       </p>
 
                       <p className="mt-1 text-xs text-white/40">
-                        אולי
+                        {isHebrew ? "אולי" : "Maybe"}
                       </p>
                     </div>
                   </div>
@@ -727,47 +761,60 @@ export default function DashboardPage() {
           </div>
 
           <h2 className="mt-5 text-2xl font-black">
-            אין כרגע סקר פתוח
+            {isHebrew ? "אין כרגע סקר פתוח" : "There is no open poll"}
           </h2>
 
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-white/45">
-            פתח סקר חדש כדי לאסוף את הזמינות של חברי
-            הקבוצה ולגלות מהו היום הטוב ביותר לסשן.
+            {isHebrew
+              ? "פתח סקר חדש כדי לאסוף את הזמינות של חברי הקבוצה ולגלות מהו היום הטוב ביותר לסשן."
+              : "Create a new poll to collect team availability and find the best day for a session."}
           </p>
 
           <Link
             href="/polls/new"
             className="mt-6 inline-flex h-12 items-center justify-center rounded-2xl bg-amber-400 px-6 font-bold text-black transition hover:bg-amber-300"
           >
-            פתיחת סקר חדש
+            {isHebrew ? "פתיחת סקר חדש" : "Create new poll"}
           </Link>
         </section>
       )}
 
       <section className="mt-6">
         <h2 className="mb-4 text-xl font-black">
-          פעולות מהירות
+          {isHebrew ? "פעולות מהירות" : "Quick actions"}
         </h2>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <QuickAction
             href="/polls/new"
-            title="פתיחת סקר חדש"
-            description="יצירת סקר זמינות חדש"
+            title={isHebrew ? "פתיחת סקר חדש" : "Create new poll"}
+            description={
+              isHebrew
+                ? "יצירת סקר זמינות חדש"
+                : "Create a new availability poll"
+            }
             icon={<ClipboardPlus size={24} />}
           />
 
           <QuickAction
             href="/members"
-            title="ניהול שחקנים"
-            description="הוספה והפעלה של חברי הקבוצה"
+            title={isHebrew ? "ניהול שחקנים" : "Manage players"}
+            description={
+              isHebrew
+                ? "הוספה והפעלה של חברי הקבוצה"
+                : "Add and activate team members"
+            }
             icon={<UsersRound size={24} />}
           />
 
           <QuickAction
             href="/polls"
-            title="כל הסקרים"
-            description="צפייה וניהול של הסקרים"
+            title={isHebrew ? "כל הסקרים" : "All polls"}
+            description={
+              isHebrew
+                ? "צפייה וניהול של הסקרים"
+                : "View and manage polls"
+            }
             icon={<CalendarDays size={24} />}
           />
         </div>

@@ -11,8 +11,11 @@ import DashboardAlert from "@/components/dashboard/DashboardAlert";
 
 import Loading from "@/components/ui/Loading";
 import useDashboard from "@/hooks/useDashboard";
+import useLanguage from "@/hooks/useLanguage";
 
 export default function DashboardPage() {
+  const { tr, direction } = useLanguage();
+
   const {
     member,
     openPoll,
@@ -32,13 +35,20 @@ export default function DashboardPage() {
       <Loading
         fullScreen
         size="lg"
-        text="טוען את נתוני הקבוצה..."
+        text={
+          direction === "rtl"
+            ? "טוען את נתוני הקבוצה..."
+            : "Loading team data..."
+        }
       />
     );
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
+    <main
+      dir={direction}
+      className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10"
+    >
       <DashboardHero
         memberName={member?.fullName}
         onRefresh={refresh}

@@ -1,9 +1,15 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
 import { supabase } from "@/lib/supabase";
 import { useCurrentMember } from "@/hooks/useCurrentMember";
+import useLanguage from "@/hooks/useLanguage";
 
 import PendingRequests from "@/components/members/PendingRequests";
 
@@ -24,14 +30,27 @@ type Member = {
 };
 
 export default function MembersPage() {
-  const { member: currentMember } = useCurrentMember();
+  const { member: currentMember } =
+    useCurrentMember();
+
+  const {
+    direction,
+    isHebrew,
+  } = useLanguage();
 
   const [members, setMembers] = useState<Member[]>([]);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<
+    "success" | "error"
+  >("error");
+
   const [isLoadingMembers, setIsLoadingMembers] =
     useState(true);
+
+  const [isAddingMember, setIsAddingMember] =
+    useState(false);
 
   const isAdmin = currentMember?.role === "admin";
 
@@ -57,28 +76,43 @@ export default function MembersPage() {
 
     if (error) {
       console.error("Load members error:", error);
-      setMessage("לא ניתן לטעון את חברי הקבוצה");
+
+      setMessageType("error");
+      setMessage(
+        isHebrew
+          ? "לא ניתן לטעון את חברי הקבוצה"
+          : "Unable to load team members"
+      );
+
       setIsLoadingMembers(false);
       return;
     }
 
     setMembers((data ?? []) as Member[]);
     setIsLoadingMembers(false);
-  }, []);
+  }, [isHebrew]);
 
   useEffect(() => {
     loadMembers();
   }, [loadMembers]);
 
+  function clearMessage() {
+    setMessage("");
+    setMessageType("error");
+  }
+
   async function addMember(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-    setMessage("");
+
+    clearMessage();
 
     if (!isAdmin) {
       setMessage(
-        "רק מנהל הקבוצה יכול להוסיף שחקנים"
+        isHebrew
+          ? "רק מנהל הקבוצה יכול להוסיף שחקנים"
+          : "Only a team administrator can add players"
       );
       return;
     }
@@ -86,57 +120,112 @@ export default function MembersPage() {
     const cleanName = fullName.trim();
     const cleanPhone = phone.replace(/\D/g, "");
 
-    if (!cleanName) {
-      setMessage("יש להזין שם");
-      return;
-    }
-
-    if (!/^05\d{8}$/.test(cleanPhone)) {
+    if (cleanName.length < 2) {
       setMessage(
-        "יש להזין מספר טלפון ישראלי תקין"
+        isHebrew
+          ? "יש להזין שם מלא"
+          : "Please enter the player's full name"
       );
       return;
     }
 
-    const { error } = await supabase
-      .from("members")
-      .insert({
-        full_name: cleanName,
-        phone: cleanPhone,
-        role: "player",
-        is_active: true,
-        approval_status: "approved",
-      });
-
-    if (error) {
-      console.error("Add member error:", error);
-
+    if (cleanName.length > 80) {
       setMessage(
-        error.code === "23505"
-          ? "מספר הטלפון כבר קיים במערכת"
-          : "לא ניתן להוסיף את המשתמש"
+        isHebrew
+          ? "השם שהוזן ארוך מדי"
+          : "The entered name is too long"
       );
-
       return;
     }
 
-    setFullName("");
-    setPhone("");
-    setMessage("השחקן נוסף בהצלחה");
+    if (
+      cleanPhone.length < 8 ||
+      cleanPhone.length > 15
+    ) {
+      setMessage(
+        isHebrew
+          ? "יש להזין מספר טלפון תקין"
+          : "Please enter a valid phone number"
+      );
+      return;
+    }
 
-    await loadMembers();
+    setIsAddingMember(true);
+
+    try {
+      const { error } = await supabase
+        .from("members")
+        .insert({
+          full_name: cleanName,
+          phone: cleanPhone,
+          role: "player",
+          is_active: true,
+          approval_status: "approved",
+        });
+
+      if (error) {
+        console.error("Add member error:", error);
+
+        setMessageType("error");
+        setMessage(
+          error.code === "23505"
+            ? isHebrew
+              ? "מספר הטלפון כבר קיים במערכת"
+              : "This phone number already exists"
+            : isHebrew
+              ? "לא ניתן להוסיף את המשתמש"
+              : "Unable to add the player"
+        );
+
+        return;
+      }
+
+      setFullName("");
+      setPhone("");
+
+      setMessageType("success");
+      setMessage(
+        isHebrew
+          ? "השחקן נוסף בהצלחה"
+          : "The player was added successfully"
+      );
+
+      await loadMembers();
+    } catch (error) {
+      console.error(
+        "Unexpected add member error:",
+        error
+      );
+
+      setMessageType("error");
+      setMessage(
+        isHebrew
+          ? "אירעה שגיאה לא צפויה בעת הוספת השחקן"
+          : "An unexpected error occurred while adding the player"
+      );
+    } finally {
+      setIsAddingMember(false);
+    }
   }
 
   async function toggleMember(member: Member) {
+    clearMessage();
+
     if (!isAdmin) {
       setMessage(
-        "רק מנהל הקבוצה יכול לעדכן שחקנים"
+        isHebrew
+          ? "רק מנהל הקבוצה יכול לעדכן שחקנים"
+          : "Only a team administrator can update players"
       );
       return;
     }
 
     if (member.role === "admin") {
-      setMessage("לא ניתן להשבית מנהל");
+      setMessage(
+        isHebrew
+          ? "לא ניתן להשבית מנהל"
+          : "An administrator cannot be disabled"
+      );
       return;
     }
 
@@ -149,16 +238,46 @@ export default function MembersPage() {
 
     if (error) {
       console.error("Toggle member error:", error);
-      setMessage("לא ניתן לעדכן את המשתמש");
+
+      setMessageType("error");
+      setMessage(
+        isHebrew
+          ? "לא ניתן לעדכן את המשתמש"
+          : "Unable to update the player"
+      );
       return;
     }
+
+    setMessageType("success");
+    setMessage(
+      member.is_active
+        ? isHebrew
+          ? `${member.full_name} הושבת בהצלחה`
+          : `${member.full_name} was disabled successfully`
+        : isHebrew
+          ? `${member.full_name} הופעל בהצלחה`
+          : `${member.full_name} was activated successfully`
+    );
 
     await loadMembers();
   }
 
+  function getRoleLabel(role: MemberRole) {
+    switch (role) {
+      case "admin":
+        return isHebrew ? "מנהל" : "Admin";
+
+      case "captain":
+        return isHebrew ? "קפטן" : "Captain";
+
+      default:
+        return isHebrew ? "שחקן" : "Player";
+    }
+  }
+
   return (
     <main
-      dir="rtl"
+      dir={direction}
       className="min-h-screen bg-[#06080d] px-5 py-10 text-white"
     >
       <section className="mx-auto max-w-5xl">
@@ -168,12 +287,15 @@ export default function MembersPage() {
           </p>
 
           <h1 className="mt-2 text-3xl font-black">
-            ניהול חברי קבוצה
+            {isHebrew
+              ? "ניהול חברי קבוצה"
+              : "Team Member Management"}
           </h1>
 
           <p className="mt-2 text-white/50">
-            אישור בקשות, הוספה, צפייה והשבתה של
-            חברי הקבוצה
+            {isHebrew
+              ? "אישור בקשות, הוספה, צפייה והשבתה של חברי הקבוצה"
+              : "Approve requests, add players, view members and manage their access"}
           </p>
         </div>
 
@@ -191,55 +313,87 @@ export default function MembersPage() {
             className="mb-8 grid gap-4 rounded-3xl border border-white/10 bg-white/[0.05] p-5 md:grid-cols-[1fr_1fr_auto]"
           >
             <input
+              type="text"
+              autoComplete="name"
+              maxLength={80}
               value={fullName}
+              disabled={isAddingMember}
               onChange={(event) => {
                 setFullName(event.target.value);
-                setMessage("");
+                clearMessage();
               }}
-              placeholder="שם השחקן"
-              className="h-12 rounded-2xl border border-white/10 bg-black/25 px-4 outline-none transition focus:border-amber-300/60"
+              placeholder={
+                isHebrew
+                  ? "שם השחקן"
+                  : "Player name"
+              }
+              className="h-12 rounded-2xl border border-white/10 bg-black/25 px-4 outline-none transition focus:border-amber-300/60 disabled:cursor-not-allowed disabled:opacity-50"
             />
 
             <input
+              type="tel"
               value={phone}
+              disabled={isAddingMember}
               onChange={(event) => {
                 setPhone(
                   event.target.value.replace(/\D/g, "")
                 );
-                setMessage("");
+                clearMessage();
               }}
-              placeholder="0501234567"
-              inputMode="numeric"
-              maxLength={10}
+              placeholder={
+                isHebrew
+                  ? "מספר טלפון"
+                  : "Phone number"
+              }
+              inputMode="tel"
+              autoComplete="tel"
+              maxLength={15}
               dir="ltr"
-              className="h-12 rounded-2xl border border-white/10 bg-black/25 px-4 text-left outline-none transition focus:border-amber-300/60"
+              className="h-12 rounded-2xl border border-white/10 bg-black/25 px-4 text-left outline-none transition focus:border-amber-300/60 disabled:cursor-not-allowed disabled:opacity-50"
             />
 
             <button
               type="submit"
-              className="h-12 rounded-2xl bg-amber-400 px-6 font-bold text-black transition hover:bg-amber-300"
+              disabled={isAddingMember}
+              className="h-12 rounded-2xl bg-amber-400 px-6 font-bold text-black transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              הוסף שחקן
+              {isAddingMember
+                ? isHebrew
+                  ? "מוסיף..."
+                  : "Adding..."
+                : isHebrew
+                  ? "הוסף שחקן"
+                  : "Add Player"}
             </button>
           </form>
         )}
 
         {!isAdmin && (
           <div className="mb-8 rounded-3xl border border-purple-400/20 bg-purple-400/[0.08] p-5 text-sm text-purple-200">
-            רשימת השחקנים זמינה לצפייה. פעולות ניהול
-            זמינות למנהל בלבד.
+            {isHebrew
+              ? "רשימת השחקנים זמינה לצפייה. פעולות ניהול זמינות למנהל בלבד."
+              : "The player list is available for viewing. Management actions are available to administrators only."}
           </div>
         )}
 
         {message && (
-          <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm">
+          <div
+            role="alert"
+            className={`mb-5 rounded-2xl border px-4 py-3 text-sm ${
+              messageType === "success"
+                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                : "border-red-500/20 bg-red-500/10 text-red-300"
+            }`}
+          >
             {message}
           </div>
         )}
 
         {isLoadingMembers ? (
           <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-10 text-center text-white/40">
-            טוען את חברי הקבוצה...
+            {isHebrew
+              ? "טוען את חברי הקבוצה..."
+              : "Loading team members..."}
           </div>
         ) : (
           <div className="space-y-3">
@@ -256,19 +410,19 @@ export default function MembersPage() {
 
                     {member.role === "admin" && (
                       <span className="rounded-full bg-amber-400/15 px-2.5 py-1 text-xs font-bold text-amber-300">
-                        מנהל
+                        {getRoleLabel(member.role)}
                       </span>
                     )}
 
                     {member.role === "captain" && (
                       <span className="rounded-full bg-purple-400/15 px-2.5 py-1 text-xs font-bold text-purple-300">
-                        קפטן
+                        {getRoleLabel(member.role)}
                       </span>
                     )}
 
                     {member.role === "player" && (
                       <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-xs text-white/45">
-                        שחקן
+                        {getRoleLabel(member.role)}
                       </span>
                     )}
                   </div>
@@ -285,7 +439,8 @@ export default function MembersPage() {
                   type="button"
                   onClick={() => toggleMember(member)}
                   disabled={
-                    !isAdmin || member.role === "admin"
+                    !isAdmin ||
+                    member.role === "admin"
                   }
                   className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                     member.is_active
@@ -294,15 +449,21 @@ export default function MembersPage() {
                   } disabled:cursor-not-allowed disabled:opacity-40`}
                 >
                   {member.is_active
-                    ? "פעיל"
-                    : "לא פעיל"}
+                    ? isHebrew
+                      ? "פעיל"
+                      : "Active"
+                    : isHebrew
+                      ? "לא פעיל"
+                      : "Inactive"}
                 </button>
               </article>
             ))}
 
             {members.length === 0 && (
               <div className="rounded-3xl border border-dashed border-white/15 p-10 text-center text-white/40">
-                עדיין אין חברי קבוצה מאושרים
+                {isHebrew
+                  ? "עדיין אין חברי קבוצה מאושרים"
+                  : "There are no approved team members yet"}
               </div>
             )}
           </div>

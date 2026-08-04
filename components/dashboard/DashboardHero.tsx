@@ -3,6 +3,7 @@
 import { Crown, RefreshCw } from "lucide-react";
 
 import PageTitle from "@/components/ui/PageTitle";
+import useLanguage from "@/hooks/useLanguage";
 
 type DashboardHeroProps = {
   memberName?: string | null;
@@ -15,10 +16,23 @@ export default function DashboardHero({
   onRefresh,
   isRefreshing = false,
 }: DashboardHeroProps) {
+  const { direction } = useLanguage();
+
+  const defaultName =
+    direction === "rtl" ? "מנהל" : "Admin";
+
   return (
     <PageTitle
-      title={`שלום ${memberName || "מנהל"} 👋`}
-      subtitle="הנה תמונת המצב של הקבוצה"
+      title={
+        direction === "rtl"
+          ? `שלום ${memberName || defaultName} 👋`
+          : `Hello ${memberName || defaultName} 👋`
+      }
+      subtitle={
+        direction === "rtl"
+          ? "הנה תמונת המצב של הקבוצה"
+          : "Here's your team's current overview"
+      }
       icon={<Crown size={24} />}
       action={
         <button
@@ -32,7 +46,13 @@ export default function DashboardHero({
             className={isRefreshing ? "animate-spin" : ""}
           />
 
-          {isRefreshing ? "מרענן..." : "רענון נתונים"}
+          {isRefreshing
+            ? direction === "rtl"
+              ? "מרענן..."
+              : "Refreshing..."
+            : direction === "rtl"
+              ? "רענון נתונים"
+              : "Refresh"}
         </button>
       }
     />

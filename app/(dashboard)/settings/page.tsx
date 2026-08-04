@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { useCurrentMember } from "@/hooks/useCurrentMember";
+import useLanguage from "@/hooks/useLanguage";
 import ChangePinCard from "@/components/settings/ChangePinCard";
 
 import Avatar from "@/components/ui/Avatar";
@@ -29,7 +30,6 @@ import Section from "@/components/ui/Section";
 import {
   getTeamSettings,
   updateTeamSettings,
-  type TeamSettings,
 } from "@/services/settings/settingsService";
 
 type AppSettings = {
@@ -57,6 +57,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 export default function SettingsPage() {
   const router = useRouter();
   const { member } = useCurrentMember();
+  const { direction, isHebrew } = useLanguage();
 
   const [settingsId, setSettingsId] = useState("");
 
@@ -96,12 +97,16 @@ useEffect(() => {
       console.error(error);
 
       setMessageType("error");
-      setMessage("לא ניתן לטעון את ההגדרות");
+      setMessage(
+        isHebrew
+          ? "לא ניתן לטעון את ההגדרות"
+          : "Unable to load settings"
+      );
     }
   }
 
   loadSettings();
-}, []);
+}, [isHebrew]);
 
   function updateSetting<K extends keyof AppSettings>(
     key: K,
@@ -125,20 +130,30 @@ useEffect(() => {
     if (!isAdmin) {
       setMessageType("error");
       setMessage(
-        "רק מנהל הקבוצה יכול לשנות הגדרות מערכת"
+        isHebrew
+          ? "רק מנהל הקבוצה יכול לשנות הגדרות מערכת"
+          : "Only a team administrator can change system settings"
       );
       return;
     }
 
     if (!settings.teamName.trim()) {
       setMessageType("error");
-      setMessage("יש להזין שם קבוצה");
+      setMessage(
+        isHebrew
+          ? "יש להזין שם קבוצה"
+          : "Enter a team name"
+      );
       return;
     }
 
     if (!settings.leagueName.trim()) {
       setMessageType("error");
-      setMessage("יש להזין שם ליגה");
+      setMessage(
+        isHebrew
+          ? "יש להזין שם ליגה"
+          : "Enter a league name"
+      );
       return;
     }
 
@@ -148,7 +163,9 @@ useEffect(() => {
     ) {
       setMessageType("error");
       setMessage(
-        "משך הסשן חייב להיות בין 30 ל־600 דקות"
+        isHebrew
+          ? "משך הסשן חייב להיות בין 30 ל־600 דקות"
+          : "Session duration must be between 30 and 600 minutes"
       );
       return;
     }
@@ -170,7 +187,11 @@ await updateTeamSettings(settingsId, {
 });
 
       setMessageType("success");
-      setMessage("ההגדרות נשמרו בהצלחה");
+      setMessage(
+        isHebrew
+          ? "ההגדרות נשמרו בהצלחה"
+          : "Settings were saved successfully"
+      );
     } catch (error) {
       console.error(
         "Failed to save settings:",
@@ -178,7 +199,11 @@ await updateTeamSettings(settingsId, {
       );
 
       setMessageType("error");
-      setMessage("שמירת ההגדרות נכשלה");
+      setMessage(
+        isHebrew
+          ? "שמירת ההגדרות נכשלה"
+          : "Failed to save settings"
+      );
     } finally {
       setIsSaving(false);
     }
@@ -186,7 +211,9 @@ await updateTeamSettings(settingsId, {
 
 async function resetSettings() {
   const approved = window.confirm(
-    "להחזיר את כל ההגדרות לברירת המחדל?"
+    isHebrew
+      ? "להחזיר את כל ההגדרות לברירת המחדל?"
+      : "Restore all settings to their default values?"
   );
 
   if (!approved) {
@@ -195,13 +222,21 @@ async function resetSettings() {
 
   if (!isAdmin) {
     setMessageType("error");
-    setMessage("רק מנהל הקבוצה יכול לשנות הגדרות");
+    setMessage(
+      isHebrew
+        ? "רק מנהל הקבוצה יכול לשנות הגדרות"
+        : "Only a team administrator can change settings"
+    );
     return;
   }
 
   if (!settingsId) {
     setMessageType("error");
-    setMessage("לא נמצאה רשומת הגדרות לעדכון");
+    setMessage(
+      isHebrew
+        ? "לא נמצאה רשומת הגדרות לעדכון"
+        : "No settings record was found to update"
+    );
     return;
   }
 
@@ -226,12 +261,20 @@ async function resetSettings() {
     setSettings(DEFAULT_SETTINGS);
 
     setMessageType("success");
-    setMessage("ההגדרות הוחזרו לברירת המחדל");
+    setMessage(
+      isHebrew
+        ? "ההגדרות הוחזרו לברירת המחדל"
+        : "Settings were restored to their default values"
+    );
   } catch (error) {
     console.error("Reset settings error:", error);
 
     setMessageType("error");
-    setMessage("איפוס ההגדרות נכשל");
+    setMessage(
+      isHebrew
+        ? "איפוס ההגדרות נכשל"
+        : "Failed to reset settings"
+    );
   } finally {
     setIsSaving(false);
   }
@@ -243,10 +286,17 @@ async function resetSettings() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
+    <main
+      dir={direction}
+      className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10"
+    >
       <PageTitle
-        title="הגדרות"
-        subtitle="ניהול פרטי הקבוצה, ברירות מחדל והתראות"
+        title={isHebrew ? "הגדרות" : "Settings"}
+        subtitle={
+          isHebrew
+            ? "ניהול פרטי הקבוצה, ברירות מחדל והתראות"
+            : "Manage team details, defaults and notifications"
+        }
         icon={<Settings size={26} />}
       />
 
@@ -264,12 +314,22 @@ async function resetSettings() {
       )}
 
       <Section
-        title="המשתמש המחובר"
-        subtitle="פרטי החשבון וההרשאות שלך"
+        title={
+          isHebrew ? "המשתמש המחובר" : "Signed-in user"
+        }
+        subtitle={
+          isHebrew
+            ? "פרטי החשבון וההרשאות שלך"
+            : "Your account details and permissions"
+        }
       >
         <Section
-  title="אבטחת החשבון"
-  subtitle="שינוי הקוד האישי המשמש לכניסה למערכת"
+  title={isHebrew ? "אבטחת החשבון" : "Account security"}
+  subtitle={
+    isHebrew
+      ? "שינוי הקוד האישי המשמש לכניסה למערכת"
+      : "Change the personal PIN used to sign in"
+  }
   className="mt-10"
 >
   <ChangePinCard phone={member?.phone} />
@@ -281,7 +341,7 @@ async function resetSettings() {
               <Avatar
                 name={
                   member?.fullName ??
-                  "חבר קבוצה"
+                  (isHebrew ? "חבר קבוצה" : "Team member")
                 }
                 size="lg"
                 status="online"
@@ -290,7 +350,7 @@ async function resetSettings() {
               <div>
                 <h2 className="text-xl font-black text-white">
                   {member?.fullName ??
-                    "חבר קבוצה"}
+                    (isHebrew ? "חבר קבוצה" : "Team member")}
                 </h2>
 
                 <p
@@ -312,8 +372,12 @@ async function resetSettings() {
 
                   <span className="text-sm font-bold text-white/60">
                     {isAdmin
-                      ? "מנהל הקבוצה"
-                      : "שחקן הקבוצה"}
+                      ? isHebrew
+                        ? "מנהל הקבוצה"
+                        : "Team administrator"
+                      : isHebrew
+                        ? "שחקן הקבוצה"
+                        : "Team player"}
                   </span>
                 </div>
               </div>
@@ -325,7 +389,7 @@ async function resetSettings() {
               leftIcon={<LogOut size={18} />}
               onClick={logout}
             >
-              התנתקות
+              {isHebrew ? "התנתקות" : "Log out"}
             </GlowButton>
           </div>
         </Card>
@@ -336,14 +400,22 @@ async function resetSettings() {
         className="mt-10 space-y-10"
       >
         <Section
-          title="פרטי הקבוצה"
-          subtitle="השם והליגה שיוצגו ברחבי המערכת"
+          title={isHebrew ? "פרטי הקבוצה" : "Team details"}
+          subtitle={
+            isHebrew
+              ? "השם והליגה שיוצגו ברחבי המערכת"
+              : "The team and league names shown throughout the system"
+          }
         >
           <div className="grid gap-6 lg:grid-cols-2">
             <Card padding="lg">
               <CardHeader
-                title="שם הקבוצה"
-                description="השם שיופיע בכותרות ובמיתוג"
+                title={isHebrew ? "שם הקבוצה" : "Team name"}
+                description={
+                  isHebrew
+                    ? "השם שיופיע בכותרות ובמיתוג"
+                    : "The name displayed in headings and branding"
+                }
                 icon={<UsersRound size={22} />}
               />
 
@@ -352,7 +424,7 @@ async function resetSettings() {
                   htmlFor="teamName"
                   className="mb-2 block text-sm font-bold text-white/60"
                 >
-                  שם הקבוצה
+                  {isHebrew ? "שם הקבוצה" : "Team name"}
                 </label>
 
                 <input
@@ -373,8 +445,12 @@ async function resetSettings() {
 
             <Card padding="lg">
               <CardHeader
-                title="שם הליגה"
-                description="שם התחרות או המסגרת הפעילה"
+                title={isHebrew ? "שם הליגה" : "League name"}
+                description={
+                  isHebrew
+                    ? "שם התחרות או המסגרת הפעילה"
+                    : "The active competition or league name"
+                }
                 icon={<Trophy size={22} />}
               />
 
@@ -383,7 +459,7 @@ async function resetSettings() {
                   htmlFor="leagueName"
                   className="mb-2 block text-sm font-bold text-white/60"
                 >
-                  ליגה
+                  {isHebrew ? "ליגה" : "League"}
                 </label>
 
                 <input
@@ -405,14 +481,22 @@ async function resetSettings() {
         </Section>
 
         <Section
-          title="ברירות מחדל"
-          subtitle="הערכים שיופיעו אוטומטית בעת פתיחת סקר חדש"
+          title={isHebrew ? "ברירות מחדל" : "Defaults"}
+          subtitle={
+            isHebrew
+              ? "הערכים שיופיעו אוטומטית בעת פתיחת סקר חדש"
+              : "Values used automatically when creating a new poll"
+          }
         >
           <div className="grid gap-6 lg:grid-cols-3">
             <Card padding="lg">
               <CardHeader
-                title="שעת התחלה"
-                description="שעת ברירת המחדל לסשן"
+                title={isHebrew ? "שעת התחלה" : "Start time"}
+                description={
+                  isHebrew
+                    ? "שעת ברירת המחדל לסשן"
+                    : "Default session start time"
+                }
                 icon={<Clock3 size={22} />}
               />
 
@@ -421,7 +505,7 @@ async function resetSettings() {
                   htmlFor="defaultStartTime"
                   className="mb-2 block text-sm font-bold text-white/60"
                 >
-                  שעה
+                  {isHebrew ? "שעה" : "Time"}
                 </label>
 
                 <input
@@ -444,8 +528,14 @@ async function resetSettings() {
 
             <Card padding="lg">
               <CardHeader
-                title="משך סשן"
-                description="משך ברירת מחדל בדקות"
+                title={
+                  isHebrew ? "משך סשן" : "Session duration"
+                }
+                description={
+                  isHebrew
+                    ? "משך ברירת מחדל בדקות"
+                    : "Default duration in minutes"
+                }
                 icon={<TimerReset size={22} />}
               />
 
@@ -454,7 +544,7 @@ async function resetSettings() {
                   htmlFor="sessionDuration"
                   className="mb-2 block text-sm font-bold text-white/60"
                 >
-                  מספר דקות
+                  {isHebrew ? "מספר דקות" : "Minutes"}
                 </label>
 
                 <input
@@ -480,8 +570,12 @@ async function resetSettings() {
 
             <Card padding="lg">
               <CardHeader
-                title="אזור זמן"
-                description="התאמת תאריכים ושעות"
+                title={isHebrew ? "אזור זמן" : "Time zone"}
+                description={
+                  isHebrew
+                    ? "התאמת תאריכים ושעות"
+                    : "Date and time adjustment"
+                }
                 icon={<Globe2 size={22} />}
               />
 
@@ -490,7 +584,7 @@ async function resetSettings() {
                   htmlFor="timezone"
                   className="mb-2 block text-sm font-bold text-white/60"
                 >
-                  אזור זמן
+                  {isHebrew ? "אזור זמן" : "Time zone"}
                 </label>
 
                 <select
@@ -506,15 +600,21 @@ async function resetSettings() {
                   className="h-13 w-full rounded-2xl border border-white/10 bg-[#10131a] px-4 text-white outline-none transition focus:border-purple-400/50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="Asia/Jerusalem">
-                    ישראל — Asia/Jerusalem
+                    {isHebrew
+                      ? "ישראל — Asia/Jerusalem"
+                      : "Israel — Asia/Jerusalem"}
                   </option>
 
                   <option value="Europe/London">
-                    בריטניה — Europe/London
+                    {isHebrew
+                      ? "בריטניה — Europe/London"
+                      : "United Kingdom — Europe/London"}
                   </option>
 
                   <option value="Europe/Athens">
-                    יוון — Europe/Athens
+                    {isHebrew
+                      ? "יוון — Europe/Athens"
+                      : "Greece — Europe/Athens"}
                   </option>
 
                   <option value="UTC">
@@ -527,13 +627,23 @@ async function resetSettings() {
         </Section>
 
         <Section
-          title="התראות"
-          subtitle="העדפות לקבלת עדכונים ותזכורות"
+          title={isHebrew ? "התראות" : "Notifications"}
+          subtitle={
+            isHebrew
+              ? "העדפות לקבלת עדכונים ותזכורות"
+              : "Preferences for updates and reminders"
+          }
         >
           <div className="grid gap-6 lg:grid-cols-2">
             <SettingToggle
-              title="התראות מערכת"
-              description="קבלת עדכונים על סקרים וסשנים חדשים"
+              title={
+                isHebrew ? "התראות מערכת" : "System notifications"
+              }
+              description={
+                isHebrew
+                  ? "קבלת עדכונים על סקרים וסשנים חדשים"
+                  : "Receive updates about new polls and sessions"
+              }
               icon={<Bell size={22} />}
               checked={
                 settings.notificationsEnabled
@@ -548,8 +658,14 @@ async function resetSettings() {
             />
 
             <SettingToggle
-              title="תזכורות לסקר"
-              description="הצגת תזכורת כאשר עדיין לא מילאת זמינות"
+              title={
+                isHebrew ? "תזכורות לסקר" : "Poll reminders"
+              }
+              description={
+                isHebrew
+                  ? "הצגת תזכורת כאשר עדיין לא מילאת זמינות"
+                  : "Show a reminder when you have not submitted availability"
+              }
               icon={<Clock3 size={22} />}
               checked={
                 settings.pollRemindersEnabled
@@ -578,13 +694,15 @@ async function resetSettings() {
 
               <div>
                 <h3 className="font-black text-white">
-                  הרשאת צפייה בלבד
+                  {isHebrew
+                    ? "הרשאת צפייה בלבד"
+                    : "View-only access"}
                 </h3>
 
                 <p className="mt-2 text-sm leading-7 text-white/45">
-                  רק מנהל הקבוצה יכול לעדכן את
-                  הגדרות המערכת. עדיין ניתן לצפות
-                  בהגדרות הפעילות.
+                  {isHebrew
+                    ? "רק מנהל הקבוצה יכול לעדכן את הגדרות המערכת. עדיין ניתן לצפות בהגדרות הפעילות."
+                    : "Only a team administrator can update system settings. You can still view the active settings."}
                 </p>
               </div>
             </div>
@@ -601,7 +719,9 @@ async function resetSettings() {
               }
               onClick={resetSettings}
             >
-              החזרה לברירת מחדל
+              {isHebrew
+                ? "החזרה לברירת מחדל"
+                : "Restore defaults"}
             </GlowButton>
 
             <GlowButton
@@ -610,7 +730,7 @@ async function resetSettings() {
               loading={isSaving}
               leftIcon={<Save size={18} />}
             >
-              שמירת הגדרות
+              {isHebrew ? "שמירת הגדרות" : "Save settings"}
             </GlowButton>
           </div>
         )}
@@ -666,10 +786,8 @@ function SettingToggle({
           } disabled:cursor-not-allowed disabled:opacity-40`}
         >
           <span
-            className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${
-              checked
-                ? "right-7"
-                : "right-1"
+            className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${
+              checked ? "right-7" : "right-1"
             }`}
           />
         </button>

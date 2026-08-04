@@ -11,6 +11,9 @@ import {
   Phone,
 } from "lucide-react";
 
+import useLanguage from "@/hooks/useLanguage";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+
 type LoginResponse = {
   success: boolean;
   message?: string;
@@ -24,6 +27,12 @@ type LoginResponse = {
 
 export default function LoginPage() {
   const router = useRouter();
+
+  const {
+    tr,
+    direction,
+    isHebrew,
+  } = useLanguage();
 
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
@@ -45,12 +54,20 @@ export default function LoginPage() {
     const cleanPin = pin.replace(/\D/g, "");
 
     if (!/^05\d{8}$/.test(cleanPhone)) {
-      setMessage("יש להזין מספר טלפון ישראלי תקין");
+      setMessage(
+        isHebrew
+          ? "יש להזין מספר טלפון ישראלי תקין"
+          : "Enter a valid Israeli phone number"
+      );
       return;
     }
 
     if (!/^\d{4,6}$/.test(cleanPin)) {
-      setMessage("יש להזין קוד אישי בן 4 עד 6 ספרות");
+      setMessage(
+        isHebrew
+          ? "יש להזין קוד אישי בן 4 עד 6 ספרות"
+          : "Enter a personal PIN containing 4 to 6 digits"
+      );
       return;
     }
 
@@ -68,11 +85,15 @@ export default function LoginPage() {
         }),
       });
 
-      const data = (await response.json()) as LoginResponse;
+      const data =
+        (await response.json()) as LoginResponse;
 
       if (!response.ok || !data.success || !data.member) {
         setMessage(
-          data.message ?? "לא ניתן לבצע כניסה למערכת"
+          isHebrew
+            ? data.message ??
+                "לא ניתן לבצע כניסה למערכת"
+            : getEnglishLoginError(response.status)
         );
         return;
       }
@@ -83,14 +104,24 @@ export default function LoginPage() {
       );
 
       setIsSuccess(true);
-      setMessage(`ברוך הבא ${data.member.fullName}`);
+
+      setMessage(
+        isHebrew
+          ? `ברוך הבא ${data.member.fullName}`
+          : `Welcome, ${data.member.fullName}`
+      );
 
       setTimeout(() => {
         router.replace("/");
       }, 600);
     } catch (error) {
       console.error("Login request error:", error);
-      setMessage("אירעה שגיאה לא צפויה. נסה שוב");
+
+      setMessage(
+        isHebrew
+          ? "אירעה שגיאה לא צפויה. נסה שוב"
+          : "An unexpected error occurred. Please try again"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -98,12 +129,16 @@ export default function LoginPage() {
 
   return (
     <main
-      dir="rtl"
+      dir={direction}
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#06080d] px-5 py-10 text-white"
     >
       <div className="pointer-events-none absolute right-[-120px] top-[-120px] h-[340px] w-[340px] rounded-full bg-purple-600/20 blur-[100px]" />
 
       <div className="pointer-events-none absolute bottom-[-140px] left-[-100px] h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
+
+      <div className="absolute left-5 top-5 z-20 sm:left-8 sm:top-8">
+        <LanguageSwitcher />
+      </div>
 
       <section className="relative z-10 w-full max-w-md">
         <div className="mb-8 text-center">
@@ -131,32 +166,35 @@ export default function LoginPage() {
           </p>
 
           <h1 className="text-3xl font-black tracking-tight">
-            כניסה מאובטחת
+            {tr("login.secureLogin")}
           </h1>
 
           <p className="mt-3 text-sm leading-6 text-white/55">
-            הזן מספר טלפון וקוד אישי כדי להיכנס למערכת.
+            {tr("login.subtitle")}
           </p>
         </div>
 
         <div className="rounded-[28px] border border-white/10 bg-white/[0.06] p-6 shadow-2xl backdrop-blur-xl">
           <div className="mb-6">
             <h2 className="text-xl font-bold">
-              כניסה למערכת
+              {tr("login.loginTitle")}
             </h2>
 
             <p className="mt-1 text-sm text-white/50">
-              הכניסה זמינה לחברי הקבוצה בלבד
+              {tr("login.membersOnly")}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4"
+          >
             <div>
               <label
                 htmlFor="phone"
                 className="mb-2 block text-sm font-medium text-white/70"
               >
-                מספר טלפון
+                {tr("login.phone")}
               </label>
 
               <div className="flex items-center rounded-2xl border border-white/10 bg-black/25 px-4 transition focus-within:border-purple-300/60 focus-within:ring-4 focus-within:ring-purple-300/10">
@@ -192,7 +230,7 @@ export default function LoginPage() {
                 htmlFor="pin"
                 className="mb-2 block text-sm font-medium text-white/70"
               >
-                קוד אישי
+                {tr("login.pin")}
               </label>
 
               <div className="flex items-center rounded-2xl border border-white/10 bg-black/25 px-4 transition focus-within:border-purple-300/60 focus-within:ring-4 focus-within:ring-purple-300/10">
@@ -228,7 +266,22 @@ export default function LoginPage() {
                   }
                   disabled={isLoading}
                   aria-label={
-                    showPin ? "הסתר קוד" : "הצג קוד"
+                    showPin
+                      ? isHebrew
+                        ? "הסתר קוד"
+                        : "Hide PIN"
+                      : isHebrew
+                        ? "הצג קוד"
+                        : "Show PIN"
+                  }
+                  title={
+                    showPin
+                      ? isHebrew
+                        ? "הסתר קוד"
+                        : "Hide PIN"
+                      : isHebrew
+                        ? "הצג קוד"
+                        : "Show PIN"
                   }
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white/35 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
                 >
@@ -241,7 +294,7 @@ export default function LoginPage() {
               </div>
 
               <p className="mt-2 text-xs text-white/30">
-                הקוד האישי כולל 4 עד 6 ספרות
+                {tr("login.pinHint")}
               </p>
             </div>
 
@@ -251,12 +304,13 @@ export default function LoginPage() {
               className="h-14 w-full rounded-2xl bg-gradient-to-l from-purple-500 to-purple-700 font-bold text-white shadow-[0_12px_35px_rgba(126,34,206,0.25)] transition hover:-translate-y-0.5 hover:from-purple-400 hover:to-purple-600 hover:shadow-[0_16px_45px_rgba(126,34,206,0.35)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading
-                ? "מאמת פרטים..."
-                : "כניסה למערכת"}
+                ? tr("login.loggingIn")
+                : tr("login.loginButton")}
             </button>
 
             {message && (
               <p
+                role="alert"
                 className={`rounded-xl px-3 py-3 text-center text-sm ${
                   isSuccess
                     ? "bg-emerald-500/10 text-emerald-300"
@@ -272,7 +326,7 @@ export default function LoginPage() {
             <div className="h-px flex-1 bg-white/10" />
 
             <span className="text-xs text-white/30">
-              עדיין לא חבר בקבוצה?
+              {tr("login.notMember")}
             </span>
 
             <div className="h-px flex-1 bg-white/10" />
@@ -282,13 +336,14 @@ export default function LoginPage() {
             href="/register"
             className="flex h-12 w-full items-center justify-center rounded-2xl border border-purple-400/20 bg-purple-500/10 text-sm font-bold text-purple-200 transition hover:border-purple-300/40 hover:bg-purple-500/20 hover:text-white"
           >
-            שליחת בקשת הצטרפות
+            {tr("login.registerRequest")}
           </Link>
 
           <div className="mt-6 flex items-center justify-center gap-2 text-xs text-white/35">
             <span>🔒</span>
+
             <span>
-              טלפון וקוד אישי נבדקים בצורה מאובטחת
+              {tr("login.secureNote")}
             </span>
           </div>
         </div>
@@ -299,4 +354,23 @@ export default function LoginPage() {
       </section>
     </main>
   );
+}
+
+function getEnglishLoginError(status: number) {
+  switch (status) {
+    case 400:
+      return "The phone number or PIN is invalid";
+
+    case 401:
+      return "The phone number or personal PIN is incorrect";
+
+    case 403:
+      return "Your account is inactive or has not been approved";
+
+    case 404:
+      return "The user was not found";
+
+    default:
+      return "Unable to sign in at this time";
+  }
 }

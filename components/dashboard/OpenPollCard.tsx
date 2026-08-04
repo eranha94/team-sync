@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import Card from "@/components/ui/Card";
+import useLanguage from "@/hooks/useLanguage";
 
 type OpenPollCardProps = {
   pollId: string;
@@ -28,8 +29,11 @@ type ClosePollResponse = {
   message?: string;
 };
 
-function formatHebrewDate(dateString: string) {
-  return new Intl.DateTimeFormat("he-IL", {
+function formatDate(
+  dateString: string,
+  locale: "he-IL" | "en-US"
+) {
+  return new Intl.DateTimeFormat(locale, {
     weekday: "long",
     day: "2-digit",
     month: "2-digit",
@@ -46,6 +50,8 @@ export default function OpenPollCard({
   adminPhone,
   onPollClosed,
 }: OpenPollCardProps) {
+  const { direction, isHebrew } = useLanguage();
+
   const [showCloseForm, setShowCloseForm] = useState(false);
   const [adminPin, setAdminPin] = useState("");
   const [showPin, setShowPin] = useState(false);
@@ -61,6 +67,8 @@ export default function OpenPollCard({
     100
   );
 
+  const dateLocale = isHebrew ? "he-IL" : "en-US";
+
   async function closePoll(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -70,17 +78,27 @@ export default function OpenPollCard({
     setMessageType("error");
 
     if (!adminPhone) {
-      setMessage("לא נמצא מספר הטלפון של המנהל");
+      setMessage(
+        isHebrew
+          ? "לא נמצא מספר הטלפון של המנהל"
+          : "The administrator phone number was not found"
+      );
       return;
     }
 
     if (!/^\d{4,6}$/.test(adminPin)) {
-      setMessage("יש להזין קוד מנהל בן 4 עד 6 ספרות");
+      setMessage(
+        isHebrew
+          ? "יש להזין קוד מנהל בן 4 עד 6 ספרות"
+          : "Enter an administrator PIN containing 4 to 6 digits"
+      );
       return;
     }
 
     const approved = window.confirm(
-      `לסגור את הסקר "${title}"?\n\nלאחר הסגירה הוא לא יוצג עוד כסקר פתוח.`
+      isHebrew
+        ? `לסגור את הסקר "${title}"?\n\nלאחר הסגירה הוא לא יוצג עוד כסקר פתוח.`
+        : `Close the poll "${title}"?\n\nAfter closing, it will no longer appear as an open poll.`
     );
 
     if (!approved) {
@@ -107,15 +125,22 @@ export default function OpenPollCard({
 
       if (!response.ok || !data.success) {
         setMessageType("error");
+
         setMessage(
-          data.message ?? "לא ניתן לסגור את הסקר"
+          isHebrew
+            ? data.message ?? "לא ניתן לסגור את הסקר"
+            : getEnglishClosePollError(response.status)
         );
+
         return;
       }
 
       setMessageType("success");
+
       setMessage(
-        data.message ?? "הסקר נסגר בהצלחה"
+        isHebrew
+          ? data.message ?? "הסקר נסגר בהצלחה"
+          : "The poll was closed successfully"
       );
 
       setAdminPin("");
@@ -126,7 +151,12 @@ export default function OpenPollCard({
       console.error("Close poll request error:", error);
 
       setMessageType("error");
-      setMessage("אירעה שגיאה בעת סגירת הסקר");
+
+      setMessage(
+        isHebrew
+          ? "אירעה שגיאה בעת סגירת הסקר"
+          : "An error occurred while closing the poll"
+      );
     } finally {
       setIsClosing(false);
     }
@@ -139,10 +169,13 @@ export default function OpenPollCard({
       className="h-full"
       padding="lg"
     >
-      <div className="flex items-start justify-between gap-4">
+      <div
+        dir={direction}
+        className="flex items-start justify-between gap-4"
+      >
         <div>
           <p className="text-sm font-bold text-purple-300">
-            הסקר הפתוח
+            {isHebrew ? "הסקר הפתוח" : "Open poll"}
           </p>
 
           <h2 className="mt-2 text-xl font-black text-white">
@@ -150,9 +183,9 @@ export default function OpenPollCard({
           </h2>
 
           <p className="mt-2 text-sm text-white/40">
-            {formatHebrewDate(startDate)}
-            {" עד "}
-            {formatHebrewDate(endDate)}
+            {formatDate(startDate, dateLocale)}
+            {isHebrew ? " עד " : " to "}
+            {formatDate(endDate, dateLocale)}
           </p>
         </div>
 
@@ -164,7 +197,9 @@ export default function OpenPollCard({
       <div className="mt-8">
         <div className="flex items-center justify-between text-sm">
           <span className="text-white/45">
-            התקדמות המענה
+            {isHebrew
+              ? "התקדמות המענה"
+              : "Response progress"}
           </span>
 
           <span className="font-black text-purple-300">
@@ -186,7 +221,9 @@ export default function OpenPollCard({
         href={`/polls/${pollId}`}
         className="mt-8 flex h-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-sm font-bold text-white transition hover:border-purple-400/30 hover:bg-purple-500/15"
       >
-        מעבר למילוי הסקר
+        {isHebrew
+          ? "מעבר למילוי הסקר"
+          : "Open poll"}
       </Link>
 
       {isAdmin && (
@@ -201,22 +238,29 @@ export default function OpenPollCard({
               className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/[0.08] text-sm font-bold text-red-300 transition hover:border-red-400/40 hover:bg-red-500/15"
             >
               <XCircle size={18} />
-              סגירת הסקר
+
+              {isHebrew
+                ? "סגירת הסקר"
+                : "Close poll"}
             </button>
           ) : (
             <form
               onSubmit={closePoll}
+              dir={direction}
               className="rounded-2xl border border-red-400/20 bg-red-500/[0.06] p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="font-black text-white">
-                    סגירת הסקר
+                    {isHebrew
+                      ? "סגירת הסקר"
+                      : "Close poll"}
                   </h3>
 
                   <p className="mt-1 text-xs leading-5 text-white/40">
-                    יש להזין את הקוד האישי של המנהל כדי
-                    לאשר את הפעולה.
+                    {isHebrew
+                      ? "יש להזין את הקוד האישי של המנהל כדי לאשר את הפעולה."
+                      : "Enter the administrator PIN to confirm this action."}
                   </p>
                 </div>
 
@@ -229,7 +273,12 @@ export default function OpenPollCard({
                   }}
                   disabled={isClosing}
                   className="text-white/35 transition hover:text-white disabled:opacity-40"
-                  aria-label="ביטול"
+                  aria-label={
+                    isHebrew ? "ביטול" : "Cancel"
+                  }
+                  title={
+                    isHebrew ? "ביטול" : "Cancel"
+                  }
                 >
                   <XCircle size={20} />
                 </button>
@@ -239,7 +288,9 @@ export default function OpenPollCard({
                 htmlFor="closePollAdminPin"
                 className="mb-2 mt-4 block text-xs font-bold text-white/55"
               >
-                קוד מנהל
+                {isHebrew
+                  ? "קוד מנהל"
+                  : "Administrator PIN"}
               </label>
 
               <div className="flex items-center rounded-xl border border-white/10 bg-black/25 px-3 focus-within:border-red-400/40">
@@ -273,7 +324,22 @@ export default function OpenPollCard({
                   disabled={isClosing}
                   className="flex h-9 w-9 items-center justify-center rounded-lg text-white/35 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
                   aria-label={
-                    showPin ? "הסתר קוד" : "הצג קוד"
+                    showPin
+                      ? isHebrew
+                        ? "הסתר קוד"
+                        : "Hide PIN"
+                      : isHebrew
+                        ? "הצג קוד"
+                        : "Show PIN"
+                  }
+                  title={
+                    showPin
+                      ? isHebrew
+                        ? "הסתר קוד"
+                        : "Hide PIN"
+                      : isHebrew
+                        ? "הצג קוד"
+                        : "Show PIN"
                   }
                 >
                   {showPin ? (
@@ -292,8 +358,12 @@ export default function OpenPollCard({
                 <XCircle size={18} />
 
                 {isClosing
-                  ? "סוגר את הסקר..."
-                  : "אישור סגירת הסקר"}
+                  ? isHebrew
+                    ? "סוגר את הסקר..."
+                    : "Closing poll..."
+                  : isHebrew
+                    ? "אישור סגירת הסקר"
+                    : "Confirm poll closure"}
               </button>
             </form>
           )}
@@ -314,4 +384,20 @@ export default function OpenPollCard({
       )}
     </Card>
   );
+}
+
+function getEnglishClosePollError(status: number) {
+  switch (status) {
+    case 400:
+      return "The poll is not open or has already been closed";
+
+    case 403:
+      return "Administrator verification failed";
+
+    case 404:
+      return "The poll was not found";
+
+    default:
+      return "Unable to close the poll at this time";
+  }
 }
